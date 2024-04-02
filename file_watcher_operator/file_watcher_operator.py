@@ -58,7 +58,7 @@ def generate_deployment_body(
                 spec:
                   containers:
                   - name: {name}-file-watcher
-                    image: ghcr.io/fiaisisfilewatcher@sha256:{file_watcher_sha}
+                    image: ghcr.io/fiaisis/filewatcher@sha256:{file_watcher_sha}
                     env:
                     - name: QUEUE_HOST
                       value: {queue_host}
