@@ -9,7 +9,7 @@ dependencies = [
 ]
 
 [project.urls]
-"Repository" = "https://github.com/interactivereduction/file-watcher"
+"Repository" = "https://github.com/fiaisisfile-watcher"
 
 [project.scripts]
 file_watcher = "file_watcher.main:main"
