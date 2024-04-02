@@ -58,7 +58,7 @@ def generate_deployment_body(
                 spec:
                   containers:
                   - name: {name}-file-watcher
-                    image: ghcr.io/interactivereduction/filewatcher@sha256:{file_watcher_sha}
+                    image: ghcr.io/fiaisis/filewatcher@sha256:{file_watcher_sha}
                     env:
                     - name: QUEUE_HOST
                       value: {queue_host}
@@ -170,7 +170,7 @@ def deploy_deployment(deployment_spec: Mapping[str, Any], name: str, children: L
     """
     app_api = kubernetes.client.AppsV1Api()
     logger.info("Starting deployment of: %s filewatcher", name)
-    namespace = os.environ.get("FILEWATCHER_NAMESPACE", "ir")
+    namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
     depl = app_api.create_namespaced_deployment(namespace=namespace, body=deployment_spec)
     children.append(depl.metadata.uid)
     logger.info("Deployed: %s filewatcher", name)
@@ -185,7 +185,7 @@ def deploy_pvc(pvc_spec: Mapping[str, Any], name: str, children: List[Any]) -> N
     :param children: The operators children
     :return: None
     """
-    namespace = os.environ.get("FILEWATCHER_NAMESPACE", "ir")
+    namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
     core_api = kubernetes.client.CoreV1Api()
     # Check if PVC exists else deploy a new one:
     if pvc_spec["metadata"]["name"] not in [
@@ -216,7 +216,7 @@ def deploy_pv(pv_spec: Mapping[str, Any], name: str, children: List[Any]) -> Non
         logger.info("Deployed PV: %s filewatcher", name)
 
 
-@kopf.on.create("ir.com", "v1", "filewatchers")
+@kopf.on.create("fia.com", "v1", "filewatchers")
 def create_fn(spec: Any, **kwargs: Any) -> Dict[str, List[Any]]:
     """
     Kopf create event handler, generates all 3 specs then creates them in the cluster, while creating the children and
@@ -241,7 +241,7 @@ def create_fn(spec: Any, **kwargs: Any) -> Dict[str, List[Any]]:
     return {"children": children}
 
 
-@kopf.on.delete("ir.com", "v1", "filewatchers")
+@kopf.on.delete("fia.com", "v1", "filewatchers")
 def delete_func(**kwargs: Any) -> None:
     """
     Kopf delete event handler. This will automatically delete the filewatcher deployment and pvc, and will manually
@@ -254,7 +254,7 @@ def delete_func(**kwargs: Any) -> None:
     client.delete_persistent_volume(name=f"{name}-file-watcher-pv")
 
 
-@kopf.on.update("ir.com", "v1", "filewatchers")
+@kopf.on.update("fia.com", "v1", "filewatchers")
 def update_func(spec: Any, **kwargs: Any) -> None:
     """
     kopf update event handler. This automatically updates the filewatcher deployment when the CRD changes

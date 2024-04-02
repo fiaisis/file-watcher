@@ -47,8 +47,7 @@ class LastRunDetector:
         self.db_updater = DBUpdater(ip=db_ip, username=db_username, password=db_password)
         self.latest_known_run_from_db = self.get_latest_run_from_db()
         logger.info("Last run in DB is: %s", self.latest_known_run_from_db)
-        if (self.latest_known_run_from_db is None
-                or self.latest_known_run_from_db == 'None'):
+        if self.latest_known_run_from_db is None or self.latest_known_run_from_db == "None":
             logger.info("Adding latest run to DB as there is no data: %s", self.last_recorded_run_from_file)
             self.update_db_with_latest_run(self.last_recorded_run_from_file)
             self.latest_known_run_from_db = self.last_recorded_run_from_file

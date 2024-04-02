@@ -33,7 +33,7 @@ class DBUpdater:
     """
 
     def __init__(self, ip: str, username: str, password: str):
-        connection_string = f"postgresql+psycopg2://{username}:{password}@{ip}:5432/interactive-reduction"
+        connection_string = f"postgresql+psycopg2://{username}:{password}@{ip}:5432/fia"
         engine = create_engine(connection_string, poolclass=QueuePool, pool_size=20, pool_pre_ping=True)
         self.session_maker_func = sessionmaker(bind=engine)
 

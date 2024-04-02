@@ -23,15 +23,15 @@ Login using docker login
 
 Then build and push the file-watcher container
 ```shell
-docker build . -f ./container/file_watcher.D -t ghcr.io/interactivereduction/filewatcher
-docker push ghcr.io/interactivereduction/filewatcher -a
+docker build . -f ./container/file_watcher.D -t ghcr.io/fiaisis/filewatcher
+docker push ghcr.io/fiaisis/filewatcher -a
 ```
 
 Then build and push the file-watcher-operator container
 
 ```shell
-docker build . -f ./container/file_watcher_operator.D -t ghcr.io/interactivereduction/filewatcher-operator
-docker push ghcr.io/interactivereduction/filewatcher-operator -a
+docker build . -f ./container/file_watcher_operator.D -t ghcr.io/fiaisis/filewatcher-operator
+docker push ghcr.io/fiaisis/filewatcher-operator -a
 ```
 
 The file-watcher container, when updated needs to be updated in each of the CRDs controlled by the file watcher operator.
