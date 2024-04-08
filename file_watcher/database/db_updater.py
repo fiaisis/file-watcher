@@ -1,6 +1,7 @@
 """
 Handles all database interactions for the file_watcher 
 """
+
 from typing import Union
 
 from sqlalchemy import create_engine, Column, Integer, String, QueuePool
