@@ -37,7 +37,7 @@ jobs:
       id: file_watcher_build
       uses: docker/build-push-action@v5
       with:
-        file: ./container/job_watcher.Dockerfile
+        file: ./container/file_watcher.D
         push: true
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/filewatcher:${{ github.sha }}
 
@@ -65,7 +65,7 @@ jobs:
       id: file_watcher_operator_build
       uses: docker/build-push-action@v5
       with:
-        file: ./container/job_creator.Dockerfile
+        file: ./container/file_watcher_operator.D
         push: true
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/filewatcher-operator:${{ github.sha }}
 
