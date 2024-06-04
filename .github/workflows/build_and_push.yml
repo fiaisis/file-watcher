@@ -72,7 +72,7 @@ jobs:
     - name: Edit the YAML file-watcher-operator.yml file for staging for file watcher operator
       uses: mikefarah/yq@v4.43.1
       with:
-        cmd: yq e -i '.spec.template.spec.containers[] |= select(.name == "file-watcher-operator").image = "ghcr.io/fiaisis/file-watcher-operator@${{ steps.file_watcher_operator_build.outputs.digest }}"' './components/file-watcher-operator/envs/staging/file-watcher-operator.yml'  
+        cmd: yq e -i '.spec.template.spec.containers[] |= select(.name == "file-watcher-operator").image = "ghcr.io/fiaisis/filewatcher-operator@${{ steps.file_watcher_operator_build.outputs.digest }}"' './components/file-watcher-operator/envs/staging/file-watcher-operator.yml'  
 
     - name: Commit and push changes for file watcher operator
       continue-on-error: true
