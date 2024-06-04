@@ -58,7 +58,7 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git commit -am "Update job watcher to use ${{ steps.file_watcher_build.outputs.digest }}"
+        git commit -am "Update file watcher to use ${{ steps.file_watcher_build.outputs.digest }}"
         git push
 
     - name: Build and push file watcher operator Docker image
@@ -79,5 +79,5 @@ jobs:
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
-        git commit -am "Update job creator to use ${{ steps.file_watcher_operator_build.outputs.digest }}"
+        git commit -am "Update file watcher operator to use ${{ steps.file_watcher_operator_build.outputs.digest }}"
         git push
