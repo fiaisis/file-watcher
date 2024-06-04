@@ -1,0 +1,83 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.WRITE_PACKAGE_TOKEN }}
+
+    - name: Checkout the Gitops repository
+      uses: actions/checkout@v4
+      with:
+        repository: fiaisis/gitops
+        token: ${{ secrets.GITOPS_STAGING_EDIT_TOKEN }}
+
+    - name: Build and push file watcher Docker image
+      id: file_watcher_build
+      uses: docker/build-push-action@v5
+      with:
+        file: ./container/job_watcher.Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/filewatcher:${{ github.sha }}
+
+    - name: Remove sha256 from the builds digest
+      id: remove_sha256_watcher
+      run: |
+        DIGEST=${{ steps.file_watcher_build.outputs.digest }}
+        FILTERED_DIGEST=${DIGEST#sha256:}
+        echo "::set-output name=digest::$FILTERED_DIGEST"
+
+    - name: Edit the YAML file-watcher-operator.yml file for staging for file watcher
+      uses: mikefarah/yq@v4.43.1
+      with:
+        cmd: yq e -i '.spec.template.spec.containers[] |= (select(.name == "file-watcher-operator") | .env[] |= select(.name == "FILE_WATCHER_SHA256").value = "${{ steps.remove_sha256_watcher.outputs.digest }}")' './components/file-watcher-operator/envs/staging/file-watcher-operator.yml'
+
+    - name: Commit and push changes for file watcher
+      continue-on-error: true
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git commit -am "Update job watcher to use ${{ steps.file_watcher_build.outputs.digest }}"
+        git push
+
+    - name: Build and push file watcher operator Docker image
+      id: file_watcher_operator_build
+      uses: docker/build-push-action@v5
+      with:
+        file: ./container/job_creator.Dockerfile
+        push: true
+        tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/filewatcher-operator:${{ github.sha }}
+
+    - name: Edit the YAML file-watcher-operator.yml file for staging for file watcher operator
+      uses: mikefarah/yq@v4.43.1
+      with:
+        cmd: yq e -i '.spec.template.spec.containers[] |= select(.name == "file-watcher-operator").image = "ghcr.io/fiaisis/file-watcher-operator@${{ steps.file_watcher_operator_build.outputs.digest }}"' './components/file-watcher-operator/envs/staging/file-watcher-operator.yml'  
+
+    - name: Commit and push changes for file watcher operator
+      continue-on-error: true
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git commit -am "Update job creator to use ${{ steps.file_watcher_operator_build.outputs.digest }}"
+        git push
