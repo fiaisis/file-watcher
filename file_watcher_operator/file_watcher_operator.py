@@ -39,12 +39,14 @@ def generate_deployment_body(
     db_ip = os.environ.get("DB_IP", "localhost")
     archive_pvc_name = f"{name}-file-watcher-pvc"
     archive_pv_name = f"{name}-file-watcher-pv"
+    namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
     deployment_spec = yaml.safe_load(
         f"""
             apiVersion: apps/v1
             kind: Deployment
             metadata:
               name: {name}-file-watcher-deployment
+              namespace: {namespace}
               labels:
                 app: {name}-file-watcher
             spec:
@@ -148,12 +150,12 @@ def generate_deployment_body(
               csi:
                 driver: smb.csi.k8s.io
                 readOnly: true
-                volumeHandle: archive.ir.svc.cluster.local/share##archive
+                volumeHandle: archive.{namespace}.svc.cluster.local/share##archive
                 volumeAttributes:
                   source: "//isisdatar55.isis.cclrc.ac.uk/inst$/"
                 nodeStageSecretRef:
                   name: archive-creds
-                  namespace: ir
+                  namespace: {namespace}
           """
     )
 
