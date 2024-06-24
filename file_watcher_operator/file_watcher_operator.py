@@ -97,6 +97,39 @@ def generate_deployment_body(
                         secretKeyRef:
                           name: filewatcher-secrets
                           key: db_password
+                    readinessProbe:
+                      exec:
+                        command:
+                        - sh
+                        - -c
+                        - |
+                          CURRENT_TIME=$(date +%s)
+                          FILE_TIME=$(date -r /tmp/heartbeat +%s)
+                          DIFF=$((CURRENT_TIME - FILE_TIME))
+                          if [ $DIFF -lt 20 ]; then
+                            exit 0
+                          else
+                            exit 1
+                          fi
+                      initialDelaySeconds: 10
+                      periodSeconds: 10
+                    livenessProbe:
+                      exec:
+                        command:
+                        - sh
+                        - -c
+                        - |
+                          CURRENT_TIME=$(date +%s)
+                          FILE_TIME=$(date -r /tmp/heartbeat +%s)
+                          DIFF=$((CURRENT_TIME - FILE_TIME))
+                          if [ $DIFF -lt 20 ]; then
+                            exit 0
+                          else
+                            exit 1
+                          fi
+                      initialDelaySeconds: 10
+                      failureThreshold: 3
+                      periodSeconds: 10
                     volumeMounts:
                       - name: archive-mount
                         mountPath: {archive_dir}

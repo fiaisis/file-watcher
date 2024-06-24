@@ -3,6 +3,7 @@
 Main module
 """
 import os
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -50,6 +51,16 @@ def load_config() -> Config:
         os.environ.get("DB_USERNAME", "admin"),
         os.environ.get("DB_PASSWORD", "admin"),
     )
+
+
+def write_readiness_probe_file() -> None:
+    """
+    Write the file with the timestamp for the readinessprobe
+    :return: None
+    """
+    path = Path("/tmp/heartbeat")  # noqa: S108
+    with path.open("w", encoding="utf-8") as file:
+        file.write(time.strftime("%Y-%m-%d %H:%M:%S"))
 
 
 class FileWatcher:
@@ -117,7 +128,7 @@ class FileWatcher:
         )
 
         try:
-            last_run_detector.watch_for_new_runs()
+            last_run_detector.watch_for_new_runs(callback_func=write_readiness_probe_file)
         except Exception as exception:  # pylint: disable=broad-exception-caught
             logger.info("File observer fell over watching because of the following exception:")
             logger.exception(exception)
