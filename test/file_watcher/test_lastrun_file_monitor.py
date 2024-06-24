@@ -133,7 +133,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         callback_func.assert_called_once_with()
 
-
     def test_watch_for_new_runs_handles_exceptions_from_get_last_run_from_file(self):
         self.lrd = create_last_run_detector(
             self.archive_path,
