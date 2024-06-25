@@ -111,7 +111,9 @@ class MainTest(unittest.TestCase):
         # Should not raise, if raised it does not handle exceptions correctly
         self.file_watcher.start_watching()
 
-        mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(callback_func=mock_write_readiness_probe_file)
+        mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(
+            callback_func=mock_write_readiness_probe_file
+        )
         mock_logger.info.assert_called_with("File observer fell over watching because of the following exception:")
         mock_logger.exception.assert_called_with(exception)
 
@@ -122,7 +124,9 @@ class MainTest(unittest.TestCase):
         with mock.patch("file_watcher.main.write_readiness_probe_file") as write_readiness_probe_file_mock:
             self.file_watcher.start_watching()
 
-        mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(callback_func=write_readiness_probe_file_mock)
+        mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(
+            callback_func=write_readiness_probe_file_mock
+        )
 
     @patch("file_watcher.main.load_config")
     @patch("file_watcher.main.FileWatcher")
