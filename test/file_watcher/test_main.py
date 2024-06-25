@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest import mock
 from unittest.mock import patch
 
-from file_watcher.main import load_config, FileWatcher, main
+from file_watcher.main import load_config, FileWatcher, main, write_readiness_probe_file
 from test.file_watcher.utils import AwaitableNonAsyncMagicMock
 
 
@@ -92,15 +92,16 @@ class MainTest(unittest.TestCase):
             self.assertEqual(logger.info.call_count, 1)
         mock_producer.assert_not_called()
 
+    @patch("file_watcher.main.write_readiness_probe_file")
     @patch("file_watcher.main.create_last_run_detector")
     @patch("file_watcher.main.logger")
     def test_file_watcher_start_watching_handles_exceptions_from_watcher(
-        self, mock_logger, mock_create_last_run_detector
+        self, mock_logger, mock_create_last_run_detector, mock_write_readiness_probe_file
     ):
         self.file_watcher = FileWatcher(self.config)
         exception = Exception("CRAZY EXCEPTION!")
 
-        def raise_exception():
+        def raise_exception(callback_func):
             raise exception
 
         mock_create_last_run_detector.return_value.watch_for_new_runs = AwaitableNonAsyncMagicMock(
@@ -110,7 +111,7 @@ class MainTest(unittest.TestCase):
         # Should not raise, if raised it does not handle exceptions correctly
         self.file_watcher.start_watching()
 
-        mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with()
+        mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(callback_func=mock_write_readiness_probe_file)
         mock_logger.info.assert_called_with("File observer fell over watching because of the following exception:")
         mock_logger.exception.assert_called_with(exception)
 
@@ -118,9 +119,10 @@ class MainTest(unittest.TestCase):
     def test_file_watcher_start_watching_creates_last_run_detector(self, mock_create_last_run_detector):
         self.file_watcher = FileWatcher(self.config)
 
-        self.file_watcher.start_watching()
+        with mock.patch("file_watcher.main.write_readiness_probe_file") as write_readiness_probe_file_mock:
+            self.file_watcher.start_watching()
 
-        mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with()
+        mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(callback_func=write_readiness_probe_file_mock)
 
     @patch("file_watcher.main.load_config")
     @patch("file_watcher.main.FileWatcher")
