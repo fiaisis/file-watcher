@@ -71,9 +71,10 @@ class LastRunDetector:
         actual_instrument = self.instrument[3:]
         return self.db_updater.get_latest_run(actual_instrument)
 
-    def watch_for_new_runs(self, run_once: bool = False) -> None:
+    def watch_for_new_runs(self, callback_func: Callable[[], None], run_once: bool = False) -> None:
         """
         This is the main loop for waiting for new runs and triggering
+        :param callback_func: This is a callable that is called once per loop
         :param run_once: Defaults to False, and will only run the loop once, aimed at simplicity for testing.
         """
         logger.info("Starting watcher...")
@@ -82,7 +83,7 @@ class LastRunDetector:
             if run_once:
                 run = False
             self._check_for_new_cycle_folder()
-
+            callback_func()
             try:
                 run_in_file = self.get_last_run_from_file()
             except RuntimeError as exception:

@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta
 from pathlib import Path
+from unittest import mock
 from unittest.mock import call, patch, MagicMock
 
 from file_watcher.lastrun_file_monitor import create_last_run_detector
@@ -95,7 +96,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         self.assertEqual(self.lrd.get_latest_cycle.call_count, 0)
 
-        self.lrd.watch_for_new_runs(run_once=True)
+        self.lrd.watch_for_new_runs(mock.MagicMock(), run_once=True)
 
         self.assertEqual(self.lrd.get_latest_cycle.call_count, 1)
         self.assertGreater(self.lrd.last_cycle_folder_check, now)
@@ -112,9 +113,25 @@ class LastRunFileMonitorTest(unittest.TestCase):
         )
         self.lrd.get_last_run_from_file = MagicMock()
 
-        self.lrd.watch_for_new_runs(run_once=True)
+        self.lrd.watch_for_new_runs(mock.MagicMock(), run_once=True)
 
         self.lrd.get_last_run_from_file.assert_called_once_with()
+
+    def test_watch_for_new_runs_calls_callback_func(self):
+        self.lrd = create_last_run_detector(
+            self.archive_path,
+            self.instrument,
+            self.callback,
+            self.run_file_prefix,
+            self.db_ip,
+            self.db_username,
+            self.db_password,
+        )
+        callback_func = mock.MagicMock()
+
+        self.lrd.watch_for_new_runs(callback_func, run_once=True)
+
+        callback_func.assert_called_once_with()
 
     def test_watch_for_new_runs_handles_exceptions_from_get_last_run_from_file(self):
         self.lrd = create_last_run_detector(
@@ -134,7 +151,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.get_last_run_from_file = MagicMock(side_effect=raise_exception)
 
         with patch("file_watcher.lastrun_file_monitor.logger") as logger:
-            self.lrd.watch_for_new_runs(run_once=True)
+            self.lrd.watch_for_new_runs(mock.MagicMock(), run_once=True)
 
             self.lrd.get_last_run_from_file.assert_called_once_with()
 
@@ -153,7 +170,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.get_last_run_from_file = MagicMock(return_value="0002")
         self.lrd.new_run_detected = AwaitableNonAsyncMagicMock()
 
-        self.lrd.watch_for_new_runs(run_once=True)
+        self.lrd.watch_for_new_runs(mock.MagicMock(), run_once=True)
 
         self.lrd.get_last_run_from_file.assert_called_once_with()
         self.lrd.new_run_detected.assert_called_once_with("0002")
@@ -171,7 +188,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.get_last_run_from_file = MagicMock(return_value="0003")
         self.lrd.recover_lost_runs = AwaitableNonAsyncMagicMock()
 
-        self.lrd.watch_for_new_runs(run_once=True)
+        self.lrd.watch_for_new_runs(mock.MagicMock(), run_once=True)
 
         self.lrd.get_last_run_from_file.assert_called_once_with()
         self.lrd.recover_lost_runs.assert_called_with("0001", "0003")
@@ -190,7 +207,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.recover_lost_runs = AwaitableNonAsyncMagicMock()
         self.lrd.new_run_detected = AwaitableNonAsyncMagicMock()
 
-        self.lrd.watch_for_new_runs(run_once=True)
+        self.lrd.watch_for_new_runs(mock.MagicMock(), run_once=True)
 
         self.lrd.get_last_run_from_file.assert_called_once_with()
         self.lrd.recover_lost_runs.assert_not_called()
