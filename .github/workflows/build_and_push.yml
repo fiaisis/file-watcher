@@ -35,7 +35,7 @@ jobs:
 
     - name: Build and push file watcher Docker image
       id: file_watcher_build
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         file: ./container/file_watcher.D
         push: true
@@ -49,20 +49,20 @@ jobs:
         echo "::set-output name=digest::$FILTERED_DIGEST"
 
     - name: Edit the YAML file-watcher-operator.yml file for staging for file watcher
-      uses: mikefarah/yq@v4.44.1
+      uses: mikefarah/yq@v4.44.2
       with:
         cmd: yq e -i '.spec.template.spec.containers[] |= (select(.name == "file-watcher-operator") | .env[] |= select(.name == "FILE_WATCHER_SHA256").value = "${{ steps.remove_sha256_watcher.outputs.digest }}")' './components/file-watcher-operator/envs/staging/file-watcher-operator.yml'
 
     - name: Build and push file watcher operator Docker image
       id: file_watcher_operator_build
-      uses: docker/build-push-action@v5
+      uses: docker/build-push-action@v6
       with:
         file: ./container/file_watcher_operator.D
         push: true
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/filewatcher-operator:${{ github.sha }}
 
     - name: Edit the YAML file-watcher-operator.yml file for staging for file watcher operator
-      uses: mikefarah/yq@v4.44.1
+      uses: mikefarah/yq@v4.44.2
       with:
         cmd: yq e -i '.spec.template.spec.containers[] |= select(.name == "file-watcher-operator").image = "ghcr.io/fiaisis/filewatcher-operator@${{ steps.file_watcher_operator_build.outputs.digest }}"' './components/file-watcher-operator/envs/staging/file-watcher-operator.yml'  
 
