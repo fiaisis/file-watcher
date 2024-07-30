@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           file: ./container/file_watcher.D
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/file_watcher:${{ github.sha }}
@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           file: ./container/file_watcher_operator.D
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/file_watcher_operator:${{ github.sha }}
