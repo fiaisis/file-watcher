@@ -17,6 +17,17 @@ Examples can be found in the GitOps repository of what these should look like as
 file-watcher-operator. When a CRD is applied, this software should create a Deployment responsible for ensuring a 
 file-watcher exists for the parameters in the CRD file.
 
+An example CRD would be:
+```yaml
+apiVersion: fia.com/v1
+kind: FileWatcher
+metadata:
+  name: mari
+spec:
+  instrumentFolder: NDXMARI
+  filePrefix: MAR
+```
+
 ## Docker
 
 Login using docker login
