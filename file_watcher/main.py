@@ -112,6 +112,7 @@ class FileWatcher:
         Start the PollingObserver with the queue based event handler and the given queue
         :return: None
         """
+        write_readiness_probe_file()
 
         def _event_occurred(path_to_add: Union[Path, None]) -> None:
             if path_to_add is not None:
