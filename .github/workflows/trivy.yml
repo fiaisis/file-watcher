@@ -10,7 +10,7 @@ env:
 jobs:
   file-watcher-scan:
     name: file-watcher image scan
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -42,7 +42,7 @@ jobs:
 
   file-watcher-operator-scan:
     name: file-watcher-operator image scan
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
