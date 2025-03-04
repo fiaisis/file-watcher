@@ -1,4 +1,3 @@
-# pylint: disable=too-many-instance-attributes
 """
 Main module
 """
@@ -130,7 +129,7 @@ class FileWatcher:
 
         try:
             last_run_detector.watch_for_new_runs(callback_func=write_readiness_probe_file)
-        except Exception as exception:  # pylint: disable=broad-exception-caught
+        except Exception as exception:
             logger.info("File observer fell over watching because of the following exception:")
             logger.exception(exception)
 

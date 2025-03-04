@@ -1,4 +1,3 @@
-# pylint: disable=too-many-arguments, too-many-instance-attributes
 """
 The module responsible for handling Last run detection including the LastRunDetector class and the creation of those
 objects
