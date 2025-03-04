@@ -20,7 +20,6 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
-# pylint: enable = duplicate-code
 
 
 def generate_deployment_body(
@@ -37,30 +36,30 @@ def generate_deployment_body(
     queue_name = os.environ.get("EGRESS_QUEUE_NAME", "watched-files")
     file_watcher_sha = os.environ.get("FILE_WATCHER_SHA256", "")
     db_ip = os.environ.get("DB_IP", "localhost")
-    archive_pvc_name = f"{name}-file-watcher-pvc"
-    archive_pv_name = f"{name}-file-watcher-pv"
+    archive_pvc_name = f"filewatcher-{name}-pvc"
+    archive_pv_name = f"filewatcher-{name}-pv"
     namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
     deployment_spec = yaml.safe_load(
         f"""
             apiVersion: apps/v1
             kind: Deployment
             metadata:
-              name: {name}-file-watcher-deployment
+              name: filewatcher-{name}-deployment
               namespace: {namespace}
               labels:
-                app: {name}-file-watcher
+                app: filewatcher-{name}
             spec:
               replicas: 1
               selector:
                 matchLabels:
-                  app: {name}-file-watcher
+                  app: filewatcher-{name}
               template:
                 metadata:
                   labels:
-                    app: {name}-file-watcher
+                    app: filewatcher-{name}
                 spec:
                   containers:
-                  - name: {name}-file-watcher
+                  - name: filewatcher-{name}
                     image: ghcr.io/fiaisis/filewatcher@sha256:{file_watcher_sha}
                     env:
                     - name: QUEUE_HOST
@@ -205,11 +204,11 @@ def deploy_deployment(deployment_spec: Mapping[str, Any], name: str, children: L
     :return: None
     """
     app_api = kubernetes.client.AppsV1Api()
-    logger.info("Starting deployment of: %s filewatcher", name)
+    logger.info("Starting deployment of: filewatcher-%s", name)
     namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
     depl = app_api.create_namespaced_deployment(namespace=namespace, body=deployment_spec)
     children.append(depl.metadata.uid)
-    logger.info("Deployed: %s filewatcher", name)
+    logger.info("Deployed: filewatcher-%s", name)
 
 
 def deploy_pvc(pvc_spec: Mapping[str, Any], name: str, children: List[Any]) -> None:
@@ -228,10 +227,10 @@ def deploy_pvc(pvc_spec: Mapping[str, Any], name: str, children: List[Any]) -> N
         ii.metadata.name
         for ii in core_api.list_namespaced_persistent_volume_claim(pvc_spec["metadata"]["namespace"]).items
     ]:
-        logger.info("Starting deployment of PVC: %s filewatcher", name)
+        logger.info("Starting deployment of PVC: filewatcher-%s", name)
         pvc = core_api.create_namespaced_persistent_volume_claim(namespace=namespace, body=pvc_spec)
         children.append(pvc.metadata.uid)
-        logger.info("Deployed PVC: %s filewatcher", name)
+        logger.info("Deployed PVC: filewatcher-%s", name)
 
 
 def deploy_pv(pv_spec: Mapping[str, Any], name: str, children: List[Any]) -> None:
@@ -246,10 +245,10 @@ def deploy_pv(pv_spec: Mapping[str, Any], name: str, children: List[Any]) -> Non
     core_api = kubernetes.client.CoreV1Api()
     # Check if PV exists else deploy a new one
     if pv_spec["metadata"]["name"] not in [ii.metadata.name for ii in core_api.list_persistent_volume().items]:
-        logger.info("Starting deployment of PV: %s filewatcher", name)
+        logger.info("Starting deployment of PV: filewatcher-%s", name)
         pv = core_api.create_persistent_volume(body=pv_spec)
         children.append(pv.metadata.uid)
-        logger.info("Deployed PV: %s filewatcher", name)
+        logger.info("Deployed PV: filewatcher-%s", name)
 
 
 @kopf.on.create("fia.com", "v1", "filewatchers")
@@ -262,7 +261,7 @@ def create_fn(spec: Any, **kwargs: Any) -> Dict[str, List[Any]]:
     :return: None
     """
     name = kwargs["body"]["metadata"]["name"]
-    logger.info("Name is %s", name)
+    logger.info("Name is filewatcher-%s", name)
 
     deployment_spec, pvc_spec, pv_spec = generate_deployment_body(spec, name)
     # Make the deployment the child of this operator
@@ -287,7 +286,7 @@ def delete_func(**kwargs: Any) -> None:
     """
     name = kwargs["body"]["metadata"]["name"]
     client = kubernetes.client.CoreV1Api()
-    client.delete_persistent_volume(name=f"{name}-file-watcher-pv")
+    client.delete_persistent_volume(name=f"filewatcher-{name}-pv")
 
 
 @kopf.on.update("fia.com", "v1", "filewatchers")
@@ -305,5 +304,5 @@ def update_func(spec: Any, **kwargs: Any) -> None:
     app_api = kubernetes.client.AppsV1Api()
 
     app_api.patch_namespaced_deployment(
-        name=f"{name}-file-watcher-deployment", namespace=namespace, body=deployment_spec
+        name=f"filewatcher-{name}-deployment", namespace=namespace, body=deployment_spec
     )
