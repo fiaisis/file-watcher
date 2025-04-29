@@ -11,6 +11,12 @@ import kopf
 import kubernetes  # type: ignore
 import yaml
 
+
+class EndpointFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.getMessage().find("/healthz") == -1 and record.getMessage().find("/ready") == -1
+
+
 # pylint: disable = (duplicate-code)
 # This will be detected from the file watcher which is not the same application.
 stdout_handler = logging.StreamHandler(stream=sys.stdout)
@@ -20,6 +26,7 @@ logging.basicConfig(
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
+logging.getLogger("aiohttp.access").addFilter(EndpointFilter())
 
 
 def generate_deployment_body(
