@@ -4,7 +4,7 @@ readme = "README.md"
 version = "0.0.1"
 dependencies = [
     "pika==1.3.2",
-    "psycopg2-binary==2.9.9",
+    "psycopg2==2.9.9",
     "SQLAlchemy==2.0.30",
 ]
 
@@ -22,7 +22,7 @@ operator = [
 ]
 
 formatting = [
-    "black==24.4.2"
+    "ruff==0.11.7"
 ]
 
 test = [
@@ -32,7 +32,6 @@ test = [
 ]
 
 code-inspection = [
-    "pylint==3.2.2",
     "mypy==1.10.0",
     "types-PyYAML==6.0.12.20240311",
     "file_watcher[test]",

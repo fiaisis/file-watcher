@@ -24,7 +24,7 @@ class LastRunDetector:
         self,
         archive_path: Path,
         instrument: str,
-        callback: Callable[[Path | None], None],  # pylint: disable = (unsupported-binary-operation)
+        callback: Callable[[Path | None], None],
         run_file_prefix: str,
         db_ip: str,
         db_username: str,
@@ -245,7 +245,7 @@ class LastRunDetector:
 def create_last_run_detector(
     archive_path: Path,
     instrument: str,
-    callback: Callable[[Path | None], None],  # pylint: disable = (unsupported-binary-operation)
+    callback: Callable[[Path | None], None],
     run_file_prefix: str,
     db_ip: str,
     db_username: str,

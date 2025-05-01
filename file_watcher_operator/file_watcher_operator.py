@@ -17,8 +17,6 @@ class EndpointFilter(logging.Filter):
         return record.getMessage().find("/healthz") == -1 and record.getMessage().find("/ready") == -1
 
 
-# pylint: disable = (duplicate-code)
-# This will be detected from the file watcher which is not the same application.
 stdout_handler = logging.StreamHandler(stream=sys.stdout)
 logging.basicConfig(
     handlers=[stdout_handler],
