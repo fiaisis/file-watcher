@@ -408,8 +408,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         run_number = "0001"
         self.lrd.archive_path = MagicMock()
         instrument_dir = self.lrd.archive_path.joinpath.return_value.joinpath.return_value
-        instrument_dir.rglob = MagicMock(return_value=["banana"])
-
+        instrument_dir.rglob = MagicMock(return_value=iter(["banana"]))
         return_value = self.lrd.find_file_in_instruments_data_folder(run_number)
 
         self.lrd.archive_path.joinpath.assert_called_once_with(self.lrd.instrument)

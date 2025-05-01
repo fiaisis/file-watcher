@@ -200,7 +200,7 @@ def generate_deployment_body(
     return deployment_spec, pvc_spec, pv_spec
 
 
-def deploy_deployment(deployment_spec: Mapping[str, Any], name: str, children: List[Any]) -> None:
+def deploy_deployment(deployment_spec: Mapping[str, Any], name: str, children: list[Any]) -> None:
     """
     Given a deployment spec, name, and operators children, create the namespaced deployment and add it's uid to the
     children
