@@ -74,13 +74,23 @@ class FileWatcher:
 
     def _get_channel(self) -> BlockingChannel:
         """Get a BlockingChannel"""
-        credentials = PlainCredentials(username=self.config.username, password=self.config.password)
-        connection_parameters = ConnectionParameters(self.config.host, 5672, credentials=credentials)
+        credentials = PlainCredentials(
+            username=self.config.username, password=self.config.password
+        )
+        connection_parameters = ConnectionParameters(
+            self.config.host, 5672, credentials=credentials
+        )
         connection = BlockingConnection(connection_parameters)
         channel = connection.channel()
-        channel.exchange_declare(self.config.queue_name, exchange_type="direct", durable=True)
-        channel.queue_declare(self.config.queue_name, durable=True, arguments={"x-queue-type": "quorum"})
-        channel.queue_bind(self.config.queue_name, self.config.queue_name, routing_key="")
+        channel.exchange_declare(
+            self.config.queue_name, exchange_type="direct", durable=True
+        )
+        channel.queue_declare(
+            self.config.queue_name, durable=True, arguments={"x-queue-type": "quorum"}
+        )
+        channel.queue_bind(
+            self.config.queue_name, self.config.queue_name, routing_key=""
+        )
         return channel
 
     @contextmanager
@@ -129,9 +139,13 @@ class FileWatcher:
         )
 
         try:
-            last_run_detector.watch_for_new_runs(callback_func=write_readiness_probe_file)
+            last_run_detector.watch_for_new_runs(
+                callback_func=write_readiness_probe_file
+            )
         except Exception as exception:
-            logger.info("File observer fell over watching because of the following exception:")
+            logger.info(
+                "File observer fell over watching because of the following exception:"
+            )
             logger.exception(exception)
 
 

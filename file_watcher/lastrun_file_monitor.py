@@ -34,31 +34,48 @@ class LastRunDetector:
         self.run_file_prefix = run_file_prefix
         self.callback = callback
         self.archive_path = archive_path
-        self.last_run_file = archive_path.joinpath(instrument).joinpath("Instrument/logs/lastrun.txt")
+        self.last_run_file = archive_path.joinpath(instrument).joinpath(
+            "Instrument/logs/lastrun.txt"
+        )
         self.last_recorded_run_from_file = self.get_last_run_from_file()
         logger.info(
-            "Last run in lastrun.txt for instrument %s is: %s", self.instrument, self.last_recorded_run_from_file
+            "Last run in lastrun.txt for instrument %s is: %s",
+            self.instrument,
+            self.last_recorded_run_from_file,
         )
         self.last_cycle_folder_check = datetime.datetime.now()
         self.latest_cycle = self.get_latest_cycle()
 
         # Database setup and checks if runs missed then recovery
-        self.db_updater = DBUpdater(ip=db_ip, username=db_username, password=db_password)
+        self.db_updater = DBUpdater(
+            ip=db_ip, username=db_username, password=db_password
+        )
         self.latest_known_run_from_db = self.get_latest_run_from_db()
         logger.info("Last run in DB is: %s", self.latest_known_run_from_db)
-        if self.latest_known_run_from_db is None or self.latest_known_run_from_db == "None":
-            logger.info("Adding latest run to DB as there is no data: %s", self.last_recorded_run_from_file)
+        if (
+            self.latest_known_run_from_db is None
+            or self.latest_known_run_from_db == "None"
+        ):
+            logger.info(
+                "Adding latest run to DB as there is no data: %s",
+                self.last_recorded_run_from_file,
+            )
             self.update_db_with_latest_run(self.last_recorded_run_from_file)
             self.latest_known_run_from_db = self.last_recorded_run_from_file
         if (
             self.latest_known_run_from_db is not None
             and self.last_recorded_run_from_file is not None
-            and int(self.latest_known_run_from_db) < int(self.last_recorded_run_from_file)
+            and int(self.latest_known_run_from_db)
+            < int(self.last_recorded_run_from_file)
         ):
             logger.info(
-                "Recovering lost runs between %s and%s", self.last_recorded_run_from_file, self.latest_known_run_from_db
+                "Recovering lost runs between %s and%s",
+                self.last_recorded_run_from_file,
+                self.latest_known_run_from_db,
             )
-            self.recover_lost_runs(self.latest_known_run_from_db, self.last_recorded_run_from_file)
+            self.recover_lost_runs(
+                self.latest_known_run_from_db, self.last_recorded_run_from_file
+            )
             self.latest_known_run_from_db = self.last_recorded_run_from_file
 
     def get_latest_run_from_db(self) -> Union[str, None]:
@@ -70,7 +87,9 @@ class LastRunDetector:
         actual_instrument = self.instrument[3:]
         return self.db_updater.get_latest_run(actual_instrument)
 
-    def watch_for_new_runs(self, callback_func: Callable[[], None], run_once: bool = False) -> None:
+    def watch_for_new_runs(
+        self, callback_func: Callable[[], None], run_once: bool = False
+    ) -> None:
         """
         This is the main loop for waiting for new runs and triggering
         :param callback_func: This is a callable that is called once per loop
@@ -129,10 +148,14 @@ class LastRunDetector:
             try:
                 path = self.find_file_in_instruments_data_folder(run_number)
             except Exception as exc:
-                raise FileNotFoundError(f"This run number doesn't have a file: {run_number}") from exc
+                raise FileNotFoundError(
+                    f"This run number doesn't have a file: {run_number}"
+                ) from exc
         return path
 
-    def new_run_detected(self, run_number: str, run_path: Union[Path, None] = None) -> None:
+    def new_run_detected(
+        self, run_number: str, run_path: Union[Path, None] = None
+    ) -> None:
         """
         Called when a new run is detected, you can use the run number OR the run path
         :param run_number: The run number that was detected or
@@ -156,7 +179,9 @@ class LastRunDetector:
         with open(self.last_run_file, mode="r", encoding="utf-8") as last_run:
             line_parts = last_run.readline().split()
             if len(line_parts) != 3:
-                raise RuntimeError(f"Unexpected last run file format for '{self.last_run_file}'")
+                raise RuntimeError(
+                    f"Unexpected last run file format for '{self.last_run_file}'"
+                )
         return line_parts[1]
 
     def recover_lost_runs(self, earlier_run: str, later_run: str) -> None:
@@ -193,8 +218,12 @@ class LastRunDetector:
             except FileNotFoundError as exception:
                 try:
                     if actual_run_number_1_less_zero != actual_run_number:
-                        alt_run_path = self.generate_run_path(actual_run_number_1_less_zero)
-                        self.new_run_detected(actual_run_number_1_less_zero, run_path=alt_run_path)
+                        alt_run_path = self.generate_run_path(
+                            actual_run_number_1_less_zero
+                        )
+                        self.new_run_detected(
+                            actual_run_number_1_less_zero, run_path=alt_run_path
+                        )
                     else:
                         raise FileNotFoundError(
                             "Alt run path does not exist, and neither does original path, "
@@ -219,7 +248,9 @@ class LastRunDetector:
         :param run_number: The run number you need to go and find
         :return: The Path if it exists of the run number
         """
-        instrument_dir = self.archive_path.joinpath(self.instrument).joinpath("Instrument/data")
+        instrument_dir = self.archive_path.joinpath(self.instrument).joinpath(
+            "Instrument/data"
+        )
         return list(instrument_dir.rglob(f"cycle_??_?/*{run_number}.nxs"))[0]
 
     def get_latest_cycle(self) -> str:
@@ -237,7 +268,9 @@ class LastRunDetector:
         try:
             most_recent_cycle = all_cycles[-1]
         except IndexError as exc:
-            raise FileNotFoundError(f"No cycles present in archive path: {self.archive_path}") from exc
+            raise FileNotFoundError(
+                f"No cycles present in archive path: {self.archive_path}"
+            ) from exc
         logger.info("Latest cycle found: %s", most_recent_cycle)
         return most_recent_cycle
 
@@ -262,5 +295,13 @@ def create_last_run_detector(
     :param db_password: The password used for the database
     :return:
     """
-    lrd = LastRunDetector(archive_path, instrument, callback, run_file_prefix, db_ip, db_username, db_password)
+    lrd = LastRunDetector(
+        archive_path,
+        instrument,
+        callback,
+        run_file_prefix,
+        db_ip,
+        db_username,
+        db_password,
+    )
     return lrd
