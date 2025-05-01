@@ -24,7 +24,7 @@ class LastRunDetector:
         self,
         archive_path: Path,
         instrument: str,
-        callback: Callable[[Path | None], None],  # pylint: disable = (unsupported-binary-operation)
+        callback: Callable[[Path | None], None],
         run_file_prefix: str,
         db_ip: str,
         db_username: str,
@@ -37,9 +37,11 @@ class LastRunDetector:
         self.last_run_file = archive_path.joinpath(instrument).joinpath("Instrument/logs/lastrun.txt")
         self.last_recorded_run_from_file = self.get_last_run_from_file()
         logger.info(
-            "Last run in lastrun.txt for instrument %s is: %s", self.instrument, self.last_recorded_run_from_file
+            "Last run in lastrun.txt for instrument %s is: %s",
+            self.instrument,
+            self.last_recorded_run_from_file,
         )
-        self.last_cycle_folder_check = datetime.datetime.now()
+        self.last_cycle_folder_check = datetime.datetime.now(datetime.UTC)
         self.latest_cycle = self.get_latest_cycle()
 
         # Database setup and checks if runs missed then recovery
@@ -47,7 +49,10 @@ class LastRunDetector:
         self.latest_known_run_from_db = self.get_latest_run_from_db()
         logger.info("Last run in DB is: %s", self.latest_known_run_from_db)
         if self.latest_known_run_from_db is None or self.latest_known_run_from_db == "None":
-            logger.info("Adding latest run to DB as there is no data: %s", self.last_recorded_run_from_file)
+            logger.info(
+                "Adding latest run to DB as there is no data: %s",
+                self.last_recorded_run_from_file,
+            )
             self.update_db_with_latest_run(self.last_recorded_run_from_file)
             self.latest_known_run_from_db = self.last_recorded_run_from_file
         if (
@@ -56,7 +61,9 @@ class LastRunDetector:
             and int(self.latest_known_run_from_db) < int(self.last_recorded_run_from_file)
         ):
             logger.info(
-                "Recovering lost runs between %s and%s", self.last_recorded_run_from_file, self.latest_known_run_from_db
+                "Recovering lost runs between %s and%s",
+                self.last_recorded_run_from_file,
+                self.latest_known_run_from_db,
             )
             self.recover_lost_runs(self.latest_known_run_from_db, self.last_recorded_run_from_file)
             self.latest_known_run_from_db = self.last_recorded_run_from_file
@@ -105,10 +112,10 @@ class LastRunDetector:
             self.new_run_detected(run_in_file)
 
     def _check_for_new_cycle_folder(self) -> None:
-        current_time = datetime.datetime.now()
+        current_time = datetime.datetime.now(datetime.UTC)
         time_between_cycle_folder_checks = current_time - self.last_cycle_folder_check
         # If it's been 6 hours do another check for the latest folder
-        if time_between_cycle_folder_checks.total_seconds() > 21600:
+        if time_between_cycle_folder_checks.total_seconds() > 21600:  # noqa: PLR2004
             self.latest_cycle = self.get_latest_cycle()
             self.last_cycle_folder_check = current_time
 
@@ -153,9 +160,9 @@ class LastRunDetector:
         Retrieve the last run from the instrument log's file.
         :return: The middle of the file, specifically the last run that was in the file.
         """
-        with open(self.last_run_file, mode="r", encoding="utf-8") as last_run:
+        with Path(self.last_run_file).open(mode="r", encoding="utf-8") as last_run:
             line_parts = last_run.readline().split()
-            if len(line_parts) != 3:
+            if len(line_parts) != 3:  # noqa: PLR2004
                 raise RuntimeError(f"Unexpected last run file format for '{self.last_run_file}'")
         return line_parts[1]
 
@@ -180,11 +187,7 @@ class LastRunDetector:
             actual_run_number = initial_zeros + str(run)
 
             # Handle edge case where 1 less zero is needed when the numbers roll over
-            if len(initial_zeros) > 1:
-                actual_run_number_1_less_zero = actual_run_number[1:]
-            else:
-                # In the case where there are no 0s don't handle it at all.
-                actual_run_number_1_less_zero = actual_run_number
+            actual_run_number_1_less_zero = actual_run_number[1:] if len(initial_zeros) > 1 else actual_run_number
 
             try:
                 # Generate run_path which checks that path is genuine and exists
@@ -220,7 +223,7 @@ class LastRunDetector:
         :return: The Path if it exists of the run number
         """
         instrument_dir = self.archive_path.joinpath(self.instrument).joinpath("Instrument/data")
-        return list(instrument_dir.rglob(f"cycle_??_?/*{run_number}.nxs"))[0]
+        return next(instrument_dir.rglob(f"cycle_??_?/*{run_number}.nxs"))
 
     def get_latest_cycle(self) -> str:
         """
@@ -232,7 +235,7 @@ class LastRunDetector:
         logger.info("Finding latest cycle...")
         # Use WISH (or any other TS2 instrument as their data started in 2008 and avoids the 98/99 issue of TS1
         # instruments) to determine which is the most recent cycle.
-        all_cycles = os.listdir(f"{self.archive_path}/NDXWISH/instrument/data/")
+        all_cycles = os.listdir(f"{self.archive_path}/NDXWISH/instrument/data/")  # noqa: PTH208
         all_cycles.sort()
         try:
             most_recent_cycle = all_cycles[-1]
@@ -245,7 +248,7 @@ class LastRunDetector:
 def create_last_run_detector(
     archive_path: Path,
     instrument: str,
-    callback: Callable[[Path | None], None],  # pylint: disable = (unsupported-binary-operation)
+    callback: Callable[[Path | None], None],
     run_file_prefix: str,
     db_ip: str,
     db_username: str,
@@ -262,5 +265,12 @@ def create_last_run_detector(
     :param db_password: The password used for the database
     :return:
     """
-    lrd = LastRunDetector(archive_path, instrument, callback, run_file_prefix, db_ip, db_username, db_password)
-    return lrd
+    return LastRunDetector(
+        archive_path,
+        instrument,
+        callback,
+        run_file_prefix,
+        db_ip,
+        db_username,
+        db_password,
+    )

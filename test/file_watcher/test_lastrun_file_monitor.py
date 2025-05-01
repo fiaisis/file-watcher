@@ -1,11 +1,9 @@
-# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring
-
+import datetime
 import tempfile
 import unittest
-from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
-from unittest.mock import call, patch, MagicMock
+from unittest.mock import MagicMock, call, patch
 
 from file_watcher.lastrun_file_monitor import create_last_run_detector
 from test.file_watcher.utils import AwaitableNonAsyncMagicMock
@@ -35,7 +33,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.path = self.path / "Instrument" / "logs"
         self.path.mkdir(parents=True, exist_ok=True)
         self.path = self.path / "lastrun.txt"
-        with open(self.path, "w+") as file:
+        with Path(self.path).open("w+") as file:
             file.write(f"{self.instrument} 0001 0")
 
         # Ensure wish exists
@@ -78,7 +76,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.get_latest_run_from_db()
 
         self.db_updater_mock.return_value.get_latest_run.assert_called_with(self.instrument[3:])
-        self.assertEqual(self.db_updater_mock.return_value.get_latest_run.call_count, 2)
+        assert self.db_updater_mock.return_value.get_latest_run.call_count == 2  # noqa: PLR2004
 
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
         self.lrd = create_last_run_detector(
@@ -90,16 +88,18 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
         )
-        now = datetime.now()
-        self.lrd.last_cycle_folder_check = datetime.now() - timedelta(seconds=21601)  # Set to over 6 hours ago
+        now = datetime.datetime.now(datetime.UTC)
+        self.lrd.last_cycle_folder_check = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
+            seconds=21601
+        )  # Set to over 6 hours ago
         self.lrd.get_latest_cycle = MagicMock()
 
-        self.assertEqual(self.lrd.get_latest_cycle.call_count, 0)
+        assert self.lrd.get_latest_cycle.call_count == 0
 
         self.lrd.watch_for_new_runs(mock.MagicMock(), run_once=True)
 
-        self.assertEqual(self.lrd.get_latest_cycle.call_count, 1)
-        self.assertGreater(self.lrd.last_cycle_folder_check, now)
+        assert self.lrd.get_latest_cycle.call_count == 1
+        assert self.lrd.last_cycle_folder_check > now
 
     def test_watch_for_new_runs_checks_contents_of_last_run_file(self):
         self.lrd = create_last_run_detector(
@@ -228,12 +228,12 @@ class LastRunFileMonitorTest(unittest.TestCase):
         expected_path = self.path.parent.parent / "data" / "cycle_23_2"
         expected_path.mkdir(parents=True, exist_ok=True)
         expected_path = expected_path / f"{self.lrd.run_file_prefix}0001.nxs"
-        with open(expected_path, "+w") as file:
-            file.write(f"HELLO!")
+        with Path(expected_path).open("+w") as file:
+            file.write("HELLO!")
 
         returned_path = self.lrd.generate_run_path("0001")
 
-        self.assertEqual(expected_path, returned_path)
+        assert expected_path == returned_path
 
     def test_generate_run_path_handles_the_file_not_existing(self):
         self.lrd = create_last_run_detector(
@@ -251,10 +251,12 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         self.lrd.find_file_in_instruments_data_folder = MagicMock(side_effect=raise_exception)
 
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(FileNotFoundError):  # noqa: PT027
             self.lrd.generate_run_path("0001")
 
-    def test_generate_run_path_handles_the_file_not_existing_where_expected_but_in_another_folder(self):
+    def test_generate_run_path_handles_the_file_not_existing_where_expected_but_in_another_folder(
+        self,
+    ):
         self.lrd = create_last_run_detector(
             self.archive_path,
             self.instrument,
@@ -270,7 +272,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         returned_path = self.lrd.generate_run_path("0001")
 
         self.lrd.find_file_in_instruments_data_folder.assert_called_once_with("0001")
-        self.assertEqual(expected_path, returned_path)
+        assert expected_path == returned_path
 
     def test_new_run_detected_handles_just_run_number(self):
         self.lrd = create_last_run_detector(
@@ -330,7 +332,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         self.lrd.last_run_file = path
 
-        self.assertRaises(RuntimeError, self.lrd.get_last_run_from_file)
+        self.assertRaises(RuntimeError, self.lrd.get_last_run_from_file)  # noqa: PT027
 
     def test_recover_lost_runs_finds_runs_that_were_lost(self):
         self.lrd = create_last_run_detector(
@@ -346,8 +348,8 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         self.lrd.recover_lost_runs("0001", "0003")
 
-        self.assertEqual(self.lrd.generate_run_path.call_args_list, [call("0002"), call("0003")])
-        self.assertEqual(self.lrd.generate_run_path.call_count, 2)
+        assert self.lrd.generate_run_path.call_args_list == [call("0002"), call("0003")]
+        assert self.lrd.generate_run_path.call_count == 2  # noqa: PLR2004
 
     def test_recover_lost_runs_handles_file_not_found_twice(self):
         self.lrd = create_last_run_detector(
@@ -369,14 +371,12 @@ class LastRunFileMonitorTest(unittest.TestCase):
         with patch("file_watcher.lastrun_file_monitor.logger") as logger:
             self.lrd.recover_lost_runs("0001", "0003")
             logger.exception.assert_called_with(exception)
-            self.assertEqual(logger.exception.call_count, 2)
+            assert logger.exception.call_count == 2  # noqa: PLR2004
 
-        self.assertEqual(
-            self.lrd.generate_run_path.call_args_list, [call("0002"), call("002"), call("0003"), call("003")]
-        )
-        self.assertEqual(self.lrd.generate_run_path.call_count, 4)
+        assert self.lrd.generate_run_path.call_args_list == [call("0002"), call("002"), call("0003"), call("003")]
+        assert self.lrd.generate_run_path.call_count == 4  # noqa: PLR2004
 
-    def test_update_db_with_latest_run_sends_instrument_minus_NDX(self):
+    def test_update_db_with_latest_run_sends_instrument_minus_ndx(self):
         self.lrd = create_last_run_detector(
             self.archive_path,
             self.instrument,
@@ -393,7 +393,9 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         self.lrd.db_updater.update_latest_run.assert_called_once_with("MARI", 1)
 
-    def test_find_file_in_instruments_data_folder_finds_file_in_instrument_data_folder(self):
+    def test_find_file_in_instruments_data_folder_finds_file_in_instrument_data_folder(
+        self,
+    ):
         self.lrd = create_last_run_detector(
             self.archive_path,
             self.instrument,
@@ -406,15 +408,14 @@ class LastRunFileMonitorTest(unittest.TestCase):
         run_number = "0001"
         self.lrd.archive_path = MagicMock()
         instrument_dir = self.lrd.archive_path.joinpath.return_value.joinpath.return_value
-        instrument_dir.rglob = MagicMock(return_value=["banana"])
-
+        instrument_dir.rglob = MagicMock(return_value=iter(["banana"]))
         return_value = self.lrd.find_file_in_instruments_data_folder(run_number)
 
         self.lrd.archive_path.joinpath.assert_called_once_with(self.lrd.instrument)
         self.lrd.archive_path.joinpath.return_value.joinpath.assert_called_once_with("Instrument/data")
         instrument_dir.rglob.assert_called_once_with(f"cycle_??_?/*{run_number}.nxs")
 
-        self.assertEqual(return_value, "banana")
+        assert return_value == "banana"
 
     def test_get_latest_cycle_handles_lack_of_cycles_in_archive(self):
         self.lrd = create_last_run_detector(
@@ -432,7 +433,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             path = path / "NDXWISH" / "instrument" / "data"
             path.mkdir(parents=True, exist_ok=True)
 
-            self.assertRaises(FileNotFoundError, self.lrd.get_latest_cycle)
+            self.assertRaises(FileNotFoundError, self.lrd.get_latest_cycle)  # noqa: PT027
 
     def test_get_latest_cycle_finds_latest_cycle(self):
         self.lrd = create_last_run_detector(
@@ -452,4 +453,4 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
             latest_cycle = self.lrd.get_latest_cycle()
 
-            self.assertEqual(latest_cycle, "cycle_25_2")
+            assert latest_cycle == "cycle_25_2"

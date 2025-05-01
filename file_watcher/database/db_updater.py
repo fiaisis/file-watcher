@@ -1,11 +1,11 @@
 """
-Handles all database interactions for the file_watcher 
+Handles all database interactions for the file_watcher
 """
 
 from typing import Union
 
-from sqlalchemy import create_engine, Column, Integer, String, QueuePool
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import Column, Integer, QueuePool, String, create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from file_watcher.utils import logger
 
@@ -52,7 +52,11 @@ class DBUpdater:
                 row.latest_run = latest_run  # type: ignore[assignment]
             session.add(row)
             session.commit()
-            logger.info("Latest run %s for %s added to the DB", row.latest_run, row.instrument_name)
+            logger.info(
+                "Latest run %s for %s added to the DB",
+                row.latest_run,
+                row.instrument_name,
+            )
 
     def get_latest_run(self, instrument: str) -> Union[str, None]:
         """

@@ -1,6 +1,5 @@
-# pylint: disable=missing-module-docstring, missing-class-docstring, missing-function-docstring
-
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 from unittest.mock import MagicMock
 
 

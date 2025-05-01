@@ -4,12 +4,13 @@ Main module
 
 import os
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union, Generator, Any
+from typing import Any, Union
 
-from pika import ConnectionParameters, BlockingConnection, PlainCredentials  # type: ignore
+from pika import BlockingConnection, ConnectionParameters, PlainCredentials  # type: ignore
 from pika.adapters.blocking_connection import BlockingChannel  # type: ignore
 
 from file_watcher.lastrun_file_monitor import create_last_run_detector
