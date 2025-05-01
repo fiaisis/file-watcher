@@ -4,8 +4,8 @@ Handles all database interactions for the file_watcher
 
 from typing import Union
 
-from sqlalchemy import create_engine, Column, Integer, String, QueuePool
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import Column, Integer, QueuePool, String, create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from file_watcher.utils import logger
 
@@ -24,10 +24,7 @@ class Instrument(Base):  # type: ignore[valid-type, misc]
 
     def __eq__(self, other) -> bool:  # type: ignore[no-untyped-def]
         if isinstance(other, Instrument):
-            return bool(
-                self.instrument_name == other.instrument_name
-                and self.latest_run == other.latest_run
-            )
+            return bool(self.instrument_name == other.instrument_name and self.latest_run == other.latest_run)
         return False
 
 
@@ -38,9 +35,7 @@ class DBUpdater:
 
     def __init__(self, ip: str, username: str, password: str):
         connection_string = f"postgresql+psycopg2://{username}:{password}@{ip}:5432/fia"
-        engine = create_engine(
-            connection_string, poolclass=QueuePool, pool_size=20, pool_pre_ping=True
-        )
+        engine = create_engine(connection_string, poolclass=QueuePool, pool_size=20, pool_pre_ping=True)
         self.session_maker_func = sessionmaker(bind=engine)
 
     def update_latest_run(self, instrument: str, latest_run: int) -> None:
@@ -50,9 +45,7 @@ class DBUpdater:
         :param latest_run: The run value to be put into the database
         """
         with self.session_maker_func() as session:
-            row = (
-                session.query(Instrument).filter_by(instrument_name=instrument).first()
-            )
+            row = session.query(Instrument).filter_by(instrument_name=instrument).first()
             if row is None:
                 row = Instrument(instrument_name=instrument, latest_run=latest_run)
             else:
@@ -72,9 +65,7 @@ class DBUpdater:
         """
         with self.session_maker_func() as session:
             logger.info("Getting latest run for %s from DB...", instrument)
-            row = (
-                session.query(Instrument).filter_by(instrument_name=instrument).first()
-            )
+            row = session.query(Instrument).filter_by(instrument_name=instrument).first()
             if row is None:
                 logger.info("No run in the DB for %s", instrument)
                 return None
