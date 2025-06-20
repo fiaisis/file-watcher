@@ -13,10 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           file: ./container/file_watcher.D
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/file_watcher:${{ github.sha }}
@@ -45,10 +45,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Build Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           file: ./container/file_watcher_operator.D
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/file_watcher_operator:${{ github.sha }}
