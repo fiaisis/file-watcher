@@ -78,6 +78,21 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.db_updater_mock.return_value.get_latest_run.assert_called_with(self.instrument[3:])
         assert self.db_updater_mock.return_value.get_latest_run.call_count == 2  # noqa: PLR2004
 
+    def test_get_latest_run_from_fia(self):
+        self.lrd = create_last_run_detector(
+            self.archive_path,
+            self.instrument,
+            self.callback,
+            self.run_file_prefix,
+            self.db_ip,
+            self.db_username,
+            self.db_password
+        )
+        
+        self.lrd.get_latest_run_from_fia()
+
+        # how to assert? 
+
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
         self.lrd = create_last_run_detector(
             self.archive_path,
