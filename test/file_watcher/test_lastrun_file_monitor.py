@@ -86,12 +86,12 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.run_file_prefix,
             self.db_ip,
             self.db_username,
-            self.db_password
+            self.db_password,
         )
-        
+
         self.lrd.get_latest_run_from_fia()
 
-        # how to assert? 
+        # how to assert?
 
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
         self.lrd = create_last_run_detector(

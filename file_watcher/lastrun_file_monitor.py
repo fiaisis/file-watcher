@@ -10,7 +10,8 @@ from pathlib import Path
 from time import sleep
 from typing import Callable, Union
 
-from fia_api.core.services.instrument import get_latest_run_by_instrument_name, update_latest_run_for_instrument
+from fia_api.core.services.instrument import get_latest_run_by_instrument_name
+
 from file_watcher.database.db_updater import DBUpdater
 from file_watcher.utils import logger
 
@@ -77,7 +78,7 @@ class LastRunDetector:
         # This likely contains NDX<INSTNAME> so remove the NDX and go for it with the DB
         actual_instrument = self.instrument[3:]
         return self.db_updater.get_latest_run(actual_instrument)
-    
+
     def get_latest_run_from_fia(self) -> Union[str, None]:
         """
         Retrieve the latest run using FIA API
