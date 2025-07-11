@@ -22,6 +22,9 @@ class Instrument(Base):  # type: ignore[valid-type, misc]
     instrument_name = Column(String)
     latest_run = Column(Integer)
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
     def __eq__(self, other) -> bool:  # type: ignore[no-untyped-def]
         if isinstance(other, Instrument):
             return bool(self.instrument_name == other.instrument_name and self.latest_run == other.latest_run)

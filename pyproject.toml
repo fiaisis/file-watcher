@@ -22,11 +22,11 @@ operator = [
 ]
 
 formatting = [
-    "ruff==0.11.13"
+    "ruff==0.12.0"
 ]
 
 test = [
-    "pytest==8.4.0",
+    "pytest==8.4.1",
     "pytest-cov==6.2.1",
     "pytest-asyncio==1.0.0"
 ]
