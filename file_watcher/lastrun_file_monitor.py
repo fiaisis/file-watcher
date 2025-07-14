@@ -4,8 +4,11 @@ objects
 """
 
 import datetime
+from http import HTTPStatus
 import os
 import re
+import time
+import requests
 from pathlib import Path
 from time import sleep
 from typing import Callable, Union
@@ -31,8 +34,10 @@ class LastRunDetector:
         db_ip: str,
         db_username: str,
         db_password: str,
+        fia_api_url: str,
     ):
         self.instrument = instrument
+        self.fia_api_url = fia_api_url
         self.run_file_prefix = run_file_prefix
         self.callback = callback
         self.archive_path = archive_path
@@ -78,15 +83,42 @@ class LastRunDetector:
         # This likely contains NDX<INSTNAME> so remove the NDX and go for it with the DB
         actual_instrument = self.instrument[3:]
         return self.db_updater.get_latest_run(actual_instrument)
+    
+    def retry_api_request(self, url_request_string: str, method="GET", retry_attempts=5) -> requests.Response:
+        attempts = 0
+        while attempts < retry_attempts:
+            req = requests.request(method=method,url=url_request_string,timeout=30,)
+            
+            if req.status_code == HTTPStatus.OK:
+                return req
+            attempts += 1
+            if retry_attempts == attempts:
+                return req
+            #increment sleep time as retries persist
+            time.sleep(5*attempts)
 
-    def get_latest_run_from_fia(self) -> Union[str, None]:
+        #if retries failed, try one last time and return a response object for handling
+        return requests.request(method=method,url=url_request_string,timeout=30,)
+
+    def get_latest_run_from_fia(self, instrument: str) -> Union[str, None]:
         """
         Retrieve the latest run using FIA API
         :return: Return the latest run for the instrument that is set on this object
         """
-        # Removing the NDX prefix as it's not needed
-        instrument_name = self.instrument[3:]
-        return get_latest_run_by_instrument_name(instrument_name)
+        # Use request library to FIA API
+        instrument_name = instrument
+        try:
+            request = self.retry_api_request(url_request_string=
+                                    f"{self.fia_api_url}/instrument/{instrument_name}/latest_run",
+                                    method="GET")
+            
+            if request.status_code == 200:
+                return request.json()["latest_run"]
+            else:
+                raise Exception
+
+        except Exception as e:
+            raise e
 
     def watch_for_new_runs(self, callback_func: Callable[[], None], run_once: bool = False) -> None:
         """
@@ -264,6 +296,7 @@ def create_last_run_detector(
     db_ip: str,
     db_username: str,
     db_password: str,
+    fia_api_url: str,
 ) -> LastRunDetector:
     """
     Create asynchronously the LastRunDetector object,
@@ -274,6 +307,7 @@ def create_last_run_detector(
     :param db_ip: The ip of the database
     :param db_username: The username used for the database
     :param db_password: The password used for the database
+    :param fia_api_url: URL of the FIA API
     :return:
     """
     return LastRunDetector(
@@ -284,4 +318,5 @@ def create_last_run_detector(
         db_ip,
         db_username,
         db_password,
+        fia_api_url,
     )
