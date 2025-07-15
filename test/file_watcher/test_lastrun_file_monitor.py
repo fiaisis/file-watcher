@@ -23,6 +23,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.db_username = MagicMock()
         self.db_password = MagicMock()
         self.fia_api_url = MagicMock()
+        self.fia_api_api_key = MagicMock()
 
     def tearDown(self):
         self.db_updater_patch.stop()
@@ -64,6 +65,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
 
         mock_lrd.assert_called_once_with(
@@ -75,6 +77,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
 
     def test_get_latest_run_from_db(self):
@@ -87,6 +90,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
 
         self.lrd.get_latest_run_from_db()
@@ -105,6 +109,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         mock_response = MagicMock()
         mock_get.return_value = mock_response
@@ -125,6 +130,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         mock_response = MagicMock()
         mock_get.return_value = mock_response
@@ -143,6 +149,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         now = datetime.datetime.now(datetime.UTC)
         self.lrd.last_cycle_folder_check = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
@@ -167,6 +174,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         self.lrd.get_last_run_from_file = MagicMock()
 
@@ -184,6 +192,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         callback_func = mock.MagicMock()
 
@@ -201,6 +210,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         exception = RuntimeError("EXCEPTIONS!")
 
@@ -226,6 +236,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         self.lrd.get_last_run_from_file = MagicMock(return_value="0002")
         self.lrd.new_run_detected = AwaitableNonAsyncMagicMock()
@@ -245,6 +256,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         self.lrd.get_last_run_from_file = MagicMock(return_value="0003")
         self.lrd.recover_lost_runs = AwaitableNonAsyncMagicMock()
@@ -264,6 +276,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         self.lrd.get_last_run_from_file = MagicMock(return_value="0001")
         self.lrd.recover_lost_runs = AwaitableNonAsyncMagicMock()
@@ -285,6 +298,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         self.lrd.lastest_cycle = "cycle_23_2"
         self.lrd.run_file_prefix = "TMP"
@@ -308,6 +322,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
 
         def raise_exception():
@@ -330,6 +345,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         expected_path = MagicMock()
         self.lrd.find_file_in_instruments_data_folder = MagicMock(return_value=expected_path)
@@ -349,6 +365,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         self.lrd.update_db_with_latest_run = MagicMock()
         run_path = MagicMock()
@@ -368,6 +385,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         exception = FileNotFoundError("FILE NOT FOUND!")
 
@@ -393,6 +411,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         with tempfile.NamedTemporaryFile(delete=False) as fp:
             fp.write(b"Hello world!")
@@ -412,6 +431,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         self.lrd.generate_run_path = MagicMock(return_value=Path("/run/path/NDXMARI/MAR001"))
 
@@ -430,6 +450,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         exception = FileNotFoundError("FILE NOT FOUND!")
 
@@ -456,6 +477,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         self.lrd.instrument = "NDXMARI"
         self.lrd.db_updater.update_latest_run = MagicMock()
@@ -476,6 +498,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         run_number = "0001"
         self.lrd.archive_path = MagicMock()
@@ -499,6 +522,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         with tempfile.TemporaryDirectory() as tmpdirname:
             path = Path(tmpdirname)
@@ -518,6 +542,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.db_username,
             self.db_password,
             self.fia_api_url,
+            self.fia_api_api_key,
         )
         with tempfile.TemporaryDirectory() as tmpdirname:
             path = Path(tmpdirname)
