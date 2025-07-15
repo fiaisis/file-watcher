@@ -9,6 +9,7 @@ import os
 import re
 import time
 import requests
+from requests.auth import HTTPBasicAuth
 from pathlib import Path
 from time import sleep
 from typing import Callable, Union
@@ -35,9 +36,11 @@ class LastRunDetector:
         db_username: str,
         db_password: str,
         fia_api_url: str,
+        fia_api_api_key: str,
     ):
         self.instrument = instrument
         self.fia_api_url = fia_api_url
+        self.fia_api_api_key = fia_api_api_key
         self.run_file_prefix = run_file_prefix
         self.callback = callback
         self.archive_path = archive_path
@@ -86,8 +89,9 @@ class LastRunDetector:
     
     def retry_api_request(self, url_request_string: str, method="GET", retry_attempts=5) -> requests.Response:
         attempts = 0
+        auth = HTTPBasicAuth('apikey', self.fia_api_api_key)
         while attempts < retry_attempts:
-            req = requests.request(method=method,url=url_request_string,timeout=30,)
+            req = requests.request(method=method,url=url_request_string,timeout=30,auth=auth)
             
             if req.status_code == HTTPStatus.OK:
                 return req
@@ -297,6 +301,7 @@ def create_last_run_detector(
     db_username: str,
     db_password: str,
     fia_api_url: str,
+    fia_api_api_key: str,
 ) -> LastRunDetector:
     """
     Create asynchronously the LastRunDetector object,
@@ -308,6 +313,7 @@ def create_last_run_detector(
     :param db_username: The username used for the database
     :param db_password: The password used for the database
     :param fia_api_url: URL of the FIA API
+    :param fia_api_api_key: API KEY of the FIA API for Authorisation
     :return:
     """
     return LastRunDetector(
@@ -319,4 +325,5 @@ def create_last_run_detector(
         db_username,
         db_password,
         fia_api_url,
+        fia_api_api_key,
     )
