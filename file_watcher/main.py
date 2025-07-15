@@ -34,6 +34,7 @@ class Config:
     db_username: str
     db_password: str
     fia_api_url: str
+    fia_api_api_key: str
 
 
 def load_config() -> Config:
@@ -53,6 +54,7 @@ def load_config() -> Config:
         os.environ.get("DB_USERNAME", "admin"),
         os.environ.get("DB_PASSWORD", "admin"),
         os.environ.get("FIA_API_URL", "localhost:8000"),
+        os.environ.get("FIA_API_API_KEY", "shh")
     )
 
 
@@ -130,6 +132,7 @@ class FileWatcher:
             db_username=self.config.db_username,
             db_password=self.config.db_password,
             fia_api_url=self.config.fia_api_url,
+            fia_api_api_key=self.config.fia_api_api_key,
         )
 
         try:
