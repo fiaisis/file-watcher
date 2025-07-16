@@ -14,8 +14,6 @@ from pathlib import Path
 from time import sleep
 from typing import Callable, Union
 
-from fia_api.core.services.instrument import get_latest_run_by_instrument_name
-
 from file_watcher.database.db_updater import DBUpdater
 from file_watcher.utils import logger
 
@@ -91,7 +89,7 @@ class LastRunDetector:
         attempts = 0
         auth = HTTPBasicAuth('apikey', self.fia_api_api_key)
         while attempts < retry_attempts:
-            req = requests.request(method=method,url=url_request_string,timeout=30,auth=auth)
+            req = requests.request(method=method,url=url_request_string,timeout=5,auth=auth)
             
             if req.status_code == HTTPStatus.OK:
                 return req
