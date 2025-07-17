@@ -120,7 +120,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert self.lrd.get_latest_run_from_fia("MARI") == 1234
 
     @patch("file_watcher.lastrun_file_monitor.requests.get")
-    def test_get_latest_run_from_fia_raises_exception(self, mock_get):
+    def test_get_latest_run_from_fia_raises_exception_on_bad_status_code(self, mock_get):
         self.lrd = create_last_run_detector(
             self.archive_path,
             self.instrument,
@@ -138,6 +138,26 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         with self.assertRaises(Exception):
             self.lrd.get_latest_run_from_fia("MARI")
+
+    @patch("file_watcher.lastrun_file_monitor.requests.request")
+    def test_get_latest_run_from_fia_retries_connection(self, mock_request):
+        self.lrd = create_last_run_detector(
+            self.archive_path,
+            self.instrument,
+            self.callback,
+            self.run_file_prefix,
+            self.db_ip,
+            self.db_username,
+            self.db_password,
+            self.fia_api_url,
+            self.fia_api_api_key,
+        )
+        self.mock_response = MagicMock(side_effect=[HTTPStatus.FORBIDDEN, HTTPStatus.OK])
+        mock_request.status_code.return_value = self.mock_response
+        self.lrd.retry_api_request(f"localhost:8000/instrument/MARI/latest_run",method="GET",retry_attempts=3)
+        print("requests return: ")
+        print(mock_request.call_count)
+        assert mock_request.call_count == 2
 
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
         self.lrd = create_last_run_detector(

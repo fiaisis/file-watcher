@@ -90,10 +90,9 @@ class LastRunDetector:
         auth = HTTPBasicAuth('apikey', self.fia_api_api_key)
         while attempts < retry_attempts:
             req = requests.request(method=method,url=url_request_string,timeout=5,auth=auth)
-            
+            attempts += 1
             if req.status_code == HTTPStatus.OK:
                 return req
-            attempts += 1
             if retry_attempts == attempts:
                 return req
             #increment sleep time as retries persist
