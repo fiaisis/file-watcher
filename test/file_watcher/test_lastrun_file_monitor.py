@@ -1,14 +1,12 @@
 import datetime
-import logging
 import tempfile
 import unittest
 from http import HTTPStatus
 from pathlib import Path
 from unittest import mock
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, Mock, call, patch
 
 from file_watcher.lastrun_file_monitor import create_last_run_detector
-from file_watcher.utils import logger
 from test.file_watcher.utils import AwaitableNonAsyncMagicMock
 
 
@@ -152,12 +150,14 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.fia_api_url,
             self.fia_api_api_key,
         )
-        self.mock_response = MagicMock(side_effect=[HTTPStatus.FORBIDDEN, HTTPStatus.OK])
-        mock_request.status_code.return_value = self.mock_response
-        self.lrd.retry_api_request(f"localhost:8000/instrument/MARI/latest_run",method="GET",retry_attempts=3)
-        print("requests return: ")
-        print(mock_request.call_count)
-        assert mock_request.call_count == 2
+        expected_call_count = 2
+        first_response = Mock()
+        first_response.status_code = HTTPStatus.FORBIDDEN
+        second_response = Mock()
+        second_response.status_code = HTTPStatus.OK
+        mock_request.side_effect = [first_response, second_response]
+        self.lrd.retry_api_request("localhost:8000/instrument/MARI/latest_run", method="GET", retry_attempts=3)
+        assert mock_request.call_count == expected_call_count
 
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
         self.lrd = create_last_run_detector(

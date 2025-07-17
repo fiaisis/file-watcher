@@ -4,15 +4,15 @@ objects
 """
 
 import datetime
-from http import HTTPStatus
 import os
 import re
-import time
-import requests
-from requests.auth import HTTPBasicAuth
+from http import HTTPStatus
 from pathlib import Path
 from time import sleep
 from typing import Callable, Union
+
+import requests
+from requests.auth import HTTPBasicAuth
 
 from file_watcher.database.db_updater import DBUpdater
 from file_watcher.utils import logger
@@ -84,22 +84,22 @@ class LastRunDetector:
         # This likely contains NDX<INSTNAME> so remove the NDX and go for it with the DB
         actual_instrument = self.instrument[3:]
         return self.db_updater.get_latest_run(actual_instrument)
-    
+
     def retry_api_request(self, url_request_string: str, method="GET", retry_attempts=5) -> requests.Response:
         attempts = 0
-        auth = HTTPBasicAuth('apikey', self.fia_api_api_key)
+        auth = HTTPBasicAuth("apikey", self.fia_api_api_key)
         while attempts < retry_attempts:
-            req = requests.request(method=method,url=url_request_string,timeout=5,auth=auth)
+            req = requests.request(method=method, url=url_request_string, timeout=5, auth=auth)
             attempts += 1
             if req.status_code == HTTPStatus.OK:
                 return req
             if retry_attempts == attempts:
                 return req
-            #increment sleep time as retries persist
-            time.sleep(5*attempts)
+            # increment sleep time as retries persist
+            # time.sleep(5 * attempts)
 
-        #if retries failed, try one last time and return a response object for handling
-        return requests.request(method=method,url=url_request_string,timeout=30,)
+        # if retries failed, try one last time and return a response object for handling
+        return requests.request(method=method, url=url_request_string, timeout=30)
 
     def get_latest_run_from_fia(self, instrument: str) -> Union[str, None]:
         """
@@ -109,14 +109,13 @@ class LastRunDetector:
         # Use request library to FIA API
         instrument_name = instrument
         try:
-            request = self.retry_api_request(url_request_string=
-                                    f"{self.fia_api_url}/instrument/{instrument_name}/latest_run",
-                                    method="GET")
-            
+            request = self.retry_api_request(
+                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run", method="GET"
+            )
+
             if request.status_code == 200:
                 return request.json()["latest_run"]
-            else:
-                raise Exception
+            raise Exception
 
         except Exception as e:
             raise e
