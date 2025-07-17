@@ -6,6 +6,7 @@ objects
 import datetime
 import os
 import re
+import time
 from http import HTTPStatus
 from pathlib import Path
 from time import sleep
@@ -85,18 +86,18 @@ class LastRunDetector:
         actual_instrument = self.instrument[3:]
         return self.db_updater.get_latest_run(actual_instrument)
 
-    def retry_api_request(self, url_request_string: str, method="GET", retry_attempts=5) -> requests.Response:
+    def retry_api_request(self, url_request_string: str, method="GET", values={}, retry_attempts=5) -> requests.Response:
         attempts = 0
         auth = HTTPBasicAuth("apikey", self.fia_api_api_key)
         while attempts < retry_attempts:
-            req = requests.request(method=method, url=url_request_string, timeout=5, auth=auth)
+            req = requests.request(method=method, url=url_request_string, timeout=5, auth=auth, json=values)
             attempts += 1
             if req.status_code == HTTPStatus.OK:
                 return req
             if retry_attempts == attempts:
                 return req
             # increment sleep time as retries persist
-            # time.sleep(5 * attempts)
+            time.sleep(5 * attempts)
 
         # if retries failed, try one last time and return a response object for handling
         return requests.request(method=method, url=url_request_string, timeout=30)
@@ -115,6 +116,24 @@ class LastRunDetector:
 
             if request.status_code == 200:
                 return request.json()["latest_run"]
+            raise Exception
+
+        except Exception as e:
+            raise e
+    
+    def update_latest_run_to_fia(self, run_number: str) -> str | Exception:
+        """
+        Update FIA API with the latest run number
+        """
+        # Use request library to FIA API
+        instrument_name = self.instrument[3:]
+        try:
+            request = self.retry_api_request(
+                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run",method="PUT",values={"latest_run": run_number},
+            )
+
+            if request.status_code == 200:
+                return f"Latest run update: run number {run_number}"
             raise Exception
 
         except Exception as e:
@@ -196,6 +215,7 @@ class LastRunDetector:
                 return
         self.callback(run_path)
         self.update_db_with_latest_run(run_number)
+        self.update_latest_run_to_fia(run_number)
         self.last_recorded_run_from_file = run_number
 
     def get_last_run_from_file(self) -> str:

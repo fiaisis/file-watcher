@@ -159,6 +159,27 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.retry_api_request("localhost:8000/instrument/MARI/latest_run", method="GET", retry_attempts=3)
         assert mock_request.call_count == expected_call_count
 
+    @patch("file_watcher.lastrun_file_monitor.requests.request")
+    def test_put_latest_run_to_fia(self, mock_put):
+        self.lrd = create_last_run_detector(
+            self.archive_path,
+            self.instrument,
+            self.callback,
+            self.run_file_prefix,
+            self.db_ip,
+            self.db_username,
+            self.db_password,
+            self.fia_api_url,
+            self.fia_api_api_key,
+        )
+        mock_response = MagicMock()
+        mock_put.return_value = mock_response
+        mock_response.status_code = 200
+
+        self.lrd.update_latest_run_to_fia("234")
+
+        mock_response.assert_called_once_with("234")
+
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
         self.lrd = create_last_run_detector(
             self.archive_path,
