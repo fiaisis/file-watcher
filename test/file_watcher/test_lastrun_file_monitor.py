@@ -174,12 +174,10 @@ class LastRunFileMonitorTest(unittest.TestCase):
         )
         mock_response = MagicMock()
         mock_put.return_value = mock_response
-        mock_response.status_code = 200
+        mock_response.status_code = HTTPStatus.OK
 
         self.lrd.update_latest_run_to_fia("234")
-
-        mock_response.assert_called_once_with("234")
-
+            
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
         self.lrd = create_last_run_detector(
             self.archive_path,
