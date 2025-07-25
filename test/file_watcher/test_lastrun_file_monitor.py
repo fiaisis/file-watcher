@@ -6,6 +6,8 @@ from pathlib import Path
 from unittest import mock
 from unittest.mock import MagicMock, call, patch
 
+from requests import HTTPError
+
 from file_watcher.lastrun_file_monitor import create_last_run_detector
 from test.file_watcher.utils import AwaitableNonAsyncMagicMock
 
@@ -81,23 +83,31 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
     @patch("file_watcher.lastrun_file_monitor.requests.request")
     def test_get_latest_run_from_fia(self, mock_request):
+        last_run = 1234
         self.lrd.retry_api_request = MagicMock()
-        self.lrd.retry_api_request.return_value.status_code = 200
-        self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": 1234}
+        self.lrd.retry_api_request.return_value.status_code = HTTPStatus.OK
+        self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": last_run}
 
-        assert self.lrd.get_latest_run_from_fia("MARI") == 1234
+        assert self.lrd.get_latest_run_from_fia("MARI") == last_run
 
-    @patch("file_watcher.lastrun_file_monitor.requests.get")
-    def test_get_latest_run_from_fia_raises_exception_on_bad_status_code(self, mock_get):
-        mock_response = MagicMock()
-        mock_get.return_value = mock_response
-        mock_response.status_code = HTTPStatus.FORBIDDEN
+    # @patch("file_watcher.lastrun_file_monitor.requests.request")
+    def test_get_latest_run_from_fia_raises_exception_on_bad_status_code(self):
+        # url = "localhost:8000/instrument/MARI/latest_run"
+        # method = "GET"
+        # retry = 3
+        # mock_request.status_code = HTTPStatus.BAD_REQUEST
+        # last_run = 1234
+        self.lrd.retry_api_request = MagicMock()
+        self.lrd.retry_api_request.return_value.status_code = HTTPStatus.BAD_REQUEST
+        # self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": last_run}
+        # mock_request.return_value.status_code = self.lrd.get_latest_run_from_fia("MARI")
 
-        with self.assertRaises(Exception):
-            self.lrd.get_latest_run_from_fia("MARI")
+        # print(mock_request)
+        # assert mock_request.status_code == HTTPStatus.BAD_REQUEST
+        self.assertRaises(HTTPError, self.lrd.get_latest_run_from_fia("NDXMARI"))
 
     @patch("file_watcher.lastrun_file_monitor.requests.request")
-    def test_get_latest_run_from_fia_retries_connection(self, mock_request):
+    def test_retry_api_request_retries_connection(self, mock_request):
         url = "localhost:8000/instrument/MARI/latest_run"
         method = "GET"
         retry = 3
@@ -119,6 +129,14 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         return_string = self.lrd.update_latest_run_to_fia("234")
         assert return_string == "Latest run update: run number 234"
+
+    def test_put_latest_run_to_fia_raises_exception(self):
+        self.lrd.retry_api_request = MagicMock()
+        self.lrd.retry_api_request.return_value.status_code = HTTPStatus.FORBIDDEN
+        self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": 234}
+
+        assert self.lrd.update_latest_run_to_fia("234")
+        TODO
 
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
         now = datetime.datetime.now(datetime.UTC)
