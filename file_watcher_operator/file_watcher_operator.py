@@ -45,6 +45,7 @@ def generate_deployment_body(
     archive_pvc_name = f"filewatcher-{name}-pvc"
     archive_pv_name = f"filewatcher-{name}-pv"
     namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
+    fia_api_url = os.environ.get("FIA_API_URL", "localhost:8000")
     deployment_spec = yaml.safe_load(
         f"""
             apiVersion: apps/v1
@@ -80,6 +81,8 @@ def generate_deployment_body(
                       value: {spec.get("instrumentFolder", "NDXMAR")}
                     - name: DB_IP
                       value: {db_ip}
+                    - name: FIA_API_URL
+                      value: {fia_api_url}
 
                     # Secrets
                     - name: QUEUE_USER
@@ -102,6 +105,11 @@ def generate_deployment_body(
                         secretKeyRef:
                           name: filewatcher-secrets
                           key: db_password
+                    - name: FIA_API_API_KEY
+                      valueFrom:
+                        secretKeyRef:
+                          name: fia-api
+                          key: fia_api_api_key
                     readinessProbe:
                       exec:
                         command:
