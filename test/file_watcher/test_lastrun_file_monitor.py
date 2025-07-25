@@ -109,9 +109,8 @@ class LastRunFileMonitorTest(unittest.TestCase):
         expected_call_count = 2
 
         response = self.lrd.retry_api_request(url_request_string=url, method=method, retry_attempts=retry)
-        self.assertEqual(mock_request.call_count, expected_call_count)
-        # mock_request.assert_has_calls([call(url), call(url)])
-        self.assertEqual(response.status_code, HTTPStatus.OK)
+        assert mock_request.call_count == expected_call_count
+        assert response.status_code == HTTPStatus.OK
 
     def test_put_latest_run_to_fia(self):
         self.lrd.retry_api_request = MagicMock()
