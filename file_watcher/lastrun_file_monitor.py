@@ -13,6 +13,7 @@ from time import sleep
 from typing import Callable, Union
 
 import requests
+from requests import HTTPError
 from requests.auth import HTTPBasicAuth
 
 from file_watcher.utils import logger
@@ -98,7 +99,7 @@ class LastRunDetector:
         # if retries failed, try one last time and return a response object for handling
         return requests.request(method=method, url=url_request_string, timeout=30)
 
-    def get_latest_run_from_fia(self, instrument: str) -> Union[str, None]:
+    def get_latest_run_from_fia(self, instrument: str) -> str | HTTPError | None:
         """
         Retrieve the latest run using FIA API
         :return: Return the latest run for the instrument that is set on this object
@@ -110,14 +111,13 @@ class LastRunDetector:
                 url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run", method="GET"
             )
 
-            if request.status_code == 200:
-                return request.json()["latest_run"]
-            raise Exception
+            request.raise_for_status()
+            return request.json()["latest_run"]
 
-        except Exception as e:
-            raise e
+        except requests.exceptions.HTTPError as e:
+            print("HTTP error occurred:", e)
 
-    def update_latest_run_to_fia(self, run_number: str) -> str | Exception:
+    def update_latest_run_to_fia(self, run_number: str) -> str | HTTPError | None:
         """
         Update FIA API with the latest run number
         """
@@ -130,12 +130,11 @@ class LastRunDetector:
                 values={"latest_run": run_number},
             )
 
-            if request.status_code == 200:
-                return f"Latest run update: run number {run_number}"
-            raise Exception
+            request.raise_for_status()
+            return f"Latest run update: run number {run_number}"
 
-        except Exception as e:
-            raise e
+        except requests.exceptions.HTTPError as e:
+            print("HTTP error occurred:", e)
 
     def watch_for_new_runs(self, callback_func: Callable[[], None], run_once: bool = False) -> None:
         """
