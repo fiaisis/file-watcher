@@ -15,7 +15,6 @@ from typing import Callable, Union
 import requests
 from requests.auth import HTTPBasicAuth
 
-from file_watcher.database.db_updater import DBUpdater
 from file_watcher.utils import logger
 
 
@@ -31,11 +30,9 @@ class LastRunDetector:
         instrument: str,
         callback: Callable[[Path | None], None],
         run_file_prefix: str,
-        db_ip: str,
-        db_username: str,
-        db_password: str,
         fia_api_url: str,
         fia_api_api_key: str,
+        request_timeout_length: int = 1,
     ):
         self.instrument = instrument
         self.fia_api_url = fia_api_url
@@ -45,6 +42,7 @@ class LastRunDetector:
         self.archive_path = archive_path
         self.last_run_file = archive_path.joinpath(instrument).joinpath("Instrument/logs/lastrun.txt")
         self.last_recorded_run_from_file = self.get_last_run_from_file()
+        self.request_timeout_length = request_timeout_length
         logger.info(
             "Last run in lastrun.txt for instrument %s is: %s",
             self.instrument,
@@ -53,51 +51,49 @@ class LastRunDetector:
         self.last_cycle_folder_check = datetime.datetime.now(datetime.UTC)
         self.latest_cycle = self.get_latest_cycle()
 
-        # Database setup and checks if runs missed then recovery
-        self.db_updater = DBUpdater(ip=db_ip, username=db_username, password=db_password)
-        self.latest_known_run_from_db = self.get_latest_run_from_db()
-        logger.info("Last run in DB is: %s", self.latest_known_run_from_db)
-        if self.latest_known_run_from_db is None or self.latest_known_run_from_db == "None":
+        # FIA API get last run setup and checks if runs missed then recovery
+        self.latest_known_run_from_fia = self.get_latest_run_from_fia(self.instrument)
+        logger.info("Last run from FIA is: %s", self.latest_known_run_from_fia)
+        if self.latest_known_run_from_fia is None or self.latest_known_run_from_fia == "None":
             logger.info(
-                "Adding latest run to DB as there is no data: %s",
+                "Adding latest run to FIA as there is no data: %s",
                 self.last_recorded_run_from_file,
             )
-            self.update_db_with_latest_run(self.last_recorded_run_from_file)
-            self.latest_known_run_from_db = self.last_recorded_run_from_file
+            self.update_latest_run_to_fia(self.last_recorded_run_from_file)
+            self.latest_known_run_from_fia = self.last_recorded_run_from_file
         if (
-            self.latest_known_run_from_db is not None
+            self.latest_known_run_from_fia is not None
             and self.last_recorded_run_from_file is not None
-            and int(self.latest_known_run_from_db) < int(self.last_recorded_run_from_file)
+            and int(self.latest_known_run_from_fia) < int(self.last_recorded_run_from_file)
         ):
             logger.info(
                 "Recovering lost runs between %s and%s",
                 self.last_recorded_run_from_file,
-                self.latest_known_run_from_db,
+                self.latest_known_run_from_fia,
             )
-            self.recover_lost_runs(self.latest_known_run_from_db, self.last_recorded_run_from_file)
-            self.latest_known_run_from_db = self.last_recorded_run_from_file
+            self.recover_lost_runs(self.latest_known_run_from_fia, self.last_recorded_run_from_file)
+            self.latest_known_run_from_fia = self.last_recorded_run_from_file
 
-    def get_latest_run_from_db(self) -> Union[str, None]:
+    def retry_api_request(
+        self, url_request_string: str, method="GET", values={}, retry_attempts=5
+    ) -> requests.Response:
         """
-        Retrieve the latest run from the database
-        :return: Return the latest run for the instrument that is set on this object
+        A helper function to handle multiple attempts at HTTP Requests
+        :return: a requests.Response object for handling
         """
-        # This likely contains NDX<INSTNAME> so remove the NDX and go for it with the DB
-        actual_instrument = self.instrument[3:]
-        return self.db_updater.get_latest_run(actual_instrument)
-
-    def retry_api_request(self, url_request_string: str, method="GET", values={}, retry_attempts=5) -> requests.Response:
         attempts = 0
         auth = HTTPBasicAuth("apikey", self.fia_api_api_key)
         while attempts < retry_attempts:
-            req = requests.request(method=method, url=url_request_string, timeout=5, auth=auth, json=values)
+            req = requests.request(
+                method=method, url=url_request_string, timeout=self.request_timeout_length, auth=auth, json=values
+            )
             attempts += 1
             if req.status_code == HTTPStatus.OK:
                 return req
             if retry_attempts == attempts:
                 return req
             # increment sleep time as retries persist
-            time.sleep(5 * attempts)
+            time.sleep(5 * self.request_timeout_length)
 
         # if retries failed, try one last time and return a response object for handling
         return requests.request(method=method, url=url_request_string, timeout=30)
@@ -120,7 +116,7 @@ class LastRunDetector:
 
         except Exception as e:
             raise e
-    
+
     def update_latest_run_to_fia(self, run_number: str) -> str | Exception:
         """
         Update FIA API with the latest run number
@@ -129,7 +125,9 @@ class LastRunDetector:
         instrument_name = self.instrument[3:]
         try:
             request = self.retry_api_request(
-                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run",method="PUT",values={"latest_run": run_number},
+                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run",
+                method="PUT",
+                values={"latest_run": run_number},
             )
 
             if request.status_code == 200:
@@ -214,7 +212,6 @@ class LastRunDetector:
                 logger.exception(exception)
                 return
         self.callback(run_path)
-        self.update_db_with_latest_run(run_number)
         self.update_latest_run_to_fia(run_number)
         self.last_recorded_run_from_file = run_number
 
@@ -233,7 +230,7 @@ class LastRunDetector:
         """
         The aim is to send all the runs that have not been sent, in between the two passed run numbers, it will also
         submit the value for later_run
-        :param earlier_run: The run that was submitted to the db last
+        :param earlier_run: The run that was submitted to the FIA API last
         :param later_run: The run that was last detected
         """
 
@@ -270,15 +267,6 @@ class LastRunDetector:
                 except FileNotFoundError as exception_:
                     logger.exception(exception_)
 
-    def update_db_with_latest_run(self, run_number: str) -> None:
-        """
-        Change the details in the database to reflect this number
-        :param run_number: The run number to be put into the database to reflect the most recent detected work
-        """
-        # This likely contains NDX<INSTNAME> so remove the NDX and go for it with the DB
-        actual_instrument = self.instrument[3:]
-        self.db_updater.update_latest_run(actual_instrument, int(run_number))
-
     def find_file_in_instruments_data_folder(self, run_number: str) -> Path:
         """
         Slow but guaranteed to find the file if it exists.
@@ -313,11 +301,9 @@ def create_last_run_detector(
     instrument: str,
     callback: Callable[[Path | None], None],
     run_file_prefix: str,
-    db_ip: str,
-    db_username: str,
-    db_password: str,
     fia_api_url: str,
     fia_api_api_key: str,
+    request_timeout_length: int = 1,
 ) -> LastRunDetector:
     """
     Create asynchronously the LastRunDetector object,
@@ -325,9 +311,6 @@ def create_last_run_detector(
     :param instrument: The instrument folder to be used in the archive
     :param callback: The function to be called when a new run is detected
     :param run_file_prefix: The prefix for the .nxs files e.g. MAR for MARI or WISH for WISH
-    :param db_ip: The ip of the database
-    :param db_username: The username used for the database
-    :param db_password: The password used for the database
     :param fia_api_url: URL of the FIA API
     :param fia_api_api_key: API KEY of the FIA API for Authorisation
     :return:
@@ -337,9 +320,7 @@ def create_last_run_detector(
         instrument,
         callback,
         run_file_prefix,
-        db_ip,
-        db_username,
-        db_password,
         fia_api_url,
         fia_api_api_key,
+        request_timeout_length,
     )
