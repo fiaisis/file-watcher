@@ -111,7 +111,7 @@ class LastRunDetector:
                 url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run", method="GET"
             )
 
-            if request.status_code == 200:
+            if request.status_code == HTTPStatus.OK:
                 return request.json()["latest_run"]
             raise HTTPError
 
@@ -131,7 +131,7 @@ class LastRunDetector:
                 values={"latest_run": run_number},
             )
 
-            if request.status_code == 200:
+            if request.status_code == HTTPStatus.OK:
                 return f"Latest run update: run number {run_number}"
             raise HTTPError
 
