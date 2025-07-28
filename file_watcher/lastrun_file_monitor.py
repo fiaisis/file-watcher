@@ -111,11 +111,12 @@ class LastRunDetector:
                 url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run", method="GET"
             )
 
-            request.raise_for_status()
-            return request.json()["latest_run"]
+            if request.status_code == 200:
+                return request.json()["latest_run"]
+            raise HTTPError
 
-        except requests.exceptions.HTTPError as e:
-            print("HTTP error occurred:", e)
+        except HTTPError as e:
+            raise e
 
     def update_latest_run_to_fia(self, run_number: str) -> str | HTTPError | None:
         """
@@ -130,11 +131,12 @@ class LastRunDetector:
                 values={"latest_run": run_number},
             )
 
-            request.raise_for_status()
-            return f"Latest run update: run number {run_number}"
+            if request.status_code == 200:
+                return f"Latest run update: run number {run_number}"
+            raise HTTPError
 
-        except requests.exceptions.HTTPError as e:
-            print("HTTP error occurred:", e)
+        except HTTPError as e:
+            raise e
 
     def watch_for_new_runs(self, callback_func: Callable[[], None], run_once: bool = False) -> None:
         """
