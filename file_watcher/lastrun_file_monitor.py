@@ -53,7 +53,11 @@ class LastRunDetector:
         self.latest_cycle = self.get_latest_cycle()
 
         # FIA API get last run setup and checks if runs missed then recovery
-        self.latest_known_run_from_fia = self.get_latest_run_from_fia(self.instrument)
+        last_run_string = self.get_latest_run_from_fia(self.instrument)
+        if last_run_string is not HTTPError or None:
+            self.latest_known_run_from_fia = last_run_string
+        else:
+            raise last_run_string
         logger.info("Last run from FIA is: %s", self.latest_known_run_from_fia)
         if self.latest_known_run_from_fia is None or self.latest_known_run_from_fia == "None":
             logger.info(
@@ -76,12 +80,13 @@ class LastRunDetector:
             self.latest_known_run_from_fia = self.last_recorded_run_from_file
 
     def retry_api_request(
-        self, url_request_string: str, method="GET", values={}, retry_attempts=5
+        self, url_request_string: str, method="GET", values=None, retry_attempts=5
     ) -> requests.Response:
         """
         A helper function to handle multiple attempts at HTTP Requests
         :return: a requests.Response object for handling
         """
+        values = values
         attempts = 0
         auth = HTTPBasicAuth("apikey", self.fia_api_api_key)
         while attempts < retry_attempts:
