@@ -82,21 +82,21 @@ class LastRunFileMonitorTest(unittest.TestCase):
         )
 
     @patch("file_watcher.lastrun_file_monitor.requests.request")
-    def test_get_latest_run_from_fia(self, mock_request):
+    def test_get_latest_run_from_fia_api_api(self, mock_request):
         last_run = 1234
         self.lrd.retry_api_request = MagicMock()
         self.lrd.retry_api_request.return_value.status_code = HTTPStatus.OK
         self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": last_run}
 
-        assert self.lrd.get_latest_run_from_fia("MARI") == last_run
+        assert self.lrd.get_latest_run_from_fia_api("MARI") == last_run
 
     @patch("file_watcher.lastrun_file_monitor.requests.request")
-    def test_get_latest_run_from_fia_raises_exception_on_bad_status_code(self, mock_request):
+    def test_get_latest_run_from_fia_api_raises_exception_on_bad_status_code(self, mock_request):
         mock_response = MagicMock()
         mock_request.return_value = mock_response
         mock_response.status_code = HTTPStatus.FORBIDDEN
         with self.assertRaises(HTTPError):
-            self.lrd.get_latest_run_from_fia("MARI")
+            self.lrd.get_latest_run_from_fia_api("MARI")
 
     @patch("file_watcher.lastrun_file_monitor.requests.request")
     def test_retry_api_request_retries_connection(self, mock_request):
@@ -114,12 +114,12 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert mock_request.call_count == expected_call_count
         assert response.status_code == HTTPStatus.OK
 
-    def test_put_latest_run_to_fia(self):
+    def test_put_latest_run_to_fia_api(self):
         self.lrd.retry_api_request = MagicMock()
         self.lrd.retry_api_request.return_value.status_code = 200
         self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": 234}
 
-        return_string = self.lrd.update_latest_run_to_fia("234")
+        return_string = self.lrd.update_latest_run_to_fia_api("234")
         assert return_string == "Latest run update: run number 234"
 
     def test_put_latest_run_to_fia_raises_exception(self):
@@ -128,7 +128,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": 234}
 
         with self.assertRaises(HTTPError):
-            self.lrd.update_latest_run_to_fia("234")
+            self.lrd.update_latest_run_to_fia_api("234")
 
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
         now = datetime.datetime.now(datetime.UTC)
@@ -236,13 +236,13 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert expected_path == returned_path
 
     def test_new_run_detected_handles_just_run_number(self):
-        self.lrd.update_latest_run_to_fia = MagicMock()
+        self.lrd.update_latest_run_to_fia_api = MagicMock()
         run_path = MagicMock()
         self.lrd.generate_run_path = MagicMock(return_value=run_path)
 
         self.lrd.new_run_detected("0001")
 
-        self.lrd.update_latest_run_to_fia.assert_called_once_with("0001")
+        self.lrd.update_latest_run_to_fia_api.assert_called_once_with("0001")
         assert self.lrd.last_recorded_run_from_file == "0001"
 
     def test_new_run_detected_handles_file_not_found_by_generate_run_path(self):
@@ -270,7 +270,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.assertRaises(RuntimeError, self.lrd.get_last_run_from_file)  # noqa: PT027
 
     def test_recover_lost_runs_finds_runs_that_were_lost(self):
-        self.lrd.update_latest_run_to_fia = MagicMock(return_value="Latest run update: run number 0001")
+        self.lrd.update_latest_run_to_fia_api = MagicMock(return_value="Latest run update: run number 0001")
         self.lrd.generate_run_path = MagicMock(return_value=Path("/run/path/NDXMARI/MAR001"))
 
         self.lrd.recover_lost_runs("0001", "0003")
@@ -294,14 +294,14 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert self.lrd.generate_run_path.call_args_list == [call("0002"), call("002"), call("0003"), call("003")]
         assert self.lrd.generate_run_path.call_count == 4  # noqa: PLR2004
 
-    def test_update_latest_run_to_fia_sends_instrument_minus_ndx(self):
+    def test_update_latest_run_to_fia_api_sends_instrument_minus_ndx(self):
         self.lrd.instrument = "NDXMARI"
         run_number = "0001"
         response = MagicMock()
         response.status_code = 200
         self.lrd.retry_api_request = MagicMock()
         self.lrd.retry_api_request.return_value = response
-        self.lrd.update_latest_run_to_fia(run_number)
+        self.lrd.update_latest_run_to_fia_api(run_number)
 
         self.lrd.retry_api_request.assert_called_once_with(
             url_request_string=f"{self.fia_api_url}/instrument/MARI/latest_run",
