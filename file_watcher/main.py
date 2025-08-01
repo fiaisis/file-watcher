@@ -32,9 +32,6 @@ class Config:
     watch_dir: Path
     run_file_prefix: str
     instrument_folder: str
-    db_ip: str
-    db_username: str
-    db_password: str
     fia_api_url: str
     fia_api_api_key: str
 
@@ -52,9 +49,6 @@ def load_config() -> Config:
         Path(os.environ.get("WATCH_DIR", "/archive")),
         os.environ.get("FILE_PREFIX", "MAR"),
         os.environ.get("INSTRUMENT_FOLDER", "NDXMARI"),
-        os.environ.get("DB_IP", "localhost"),
-        os.environ.get("DB_USERNAME", "admin"),
-        os.environ.get("DB_PASSWORD", "admin"),
         os.environ.get("FIA_API_URL", "localhost:8000"),
         os.environ.get("FIA_API_API_KEY", "shh"),
     )
@@ -133,9 +127,6 @@ class FileWatcher:
             self.config.instrument_folder,
             _event_occurred,
             run_file_prefix=self.config.run_file_prefix,
-            db_ip=self.config.db_ip,
-            db_username=self.config.db_username,
-            db_password=self.config.db_password,
             fia_api_url=self.config.fia_api_url,
             fia_api_api_key=self.config.fia_api_api_key,
         )

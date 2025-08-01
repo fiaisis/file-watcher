@@ -53,18 +53,18 @@ class LastRunDetector:
         self.latest_cycle = self.get_latest_cycle()
 
         # FIA API get last run setup and checks if runs missed then recovery
-        last_run_string = self.get_latest_run_from_fia(self.instrument)
-        if last_run_string is not HTTPError or None:
-            self.latest_known_run_from_fia = last_run_string
-        else:
-            raise last_run_string
+        try:
+            self.latest_known_run_from_fia = self.get_latest_run_from_fia_api(self.instrument)
+        except HTTPError as e:
+            print("an error occured: ", e)
+
         logger.info("Last run from FIA is: %s", self.latest_known_run_from_fia)
         if self.latest_known_run_from_fia is None or self.latest_known_run_from_fia == "None":
             logger.info(
                 "Adding latest run to FIA as there is no data: %s",
                 self.last_recorded_run_from_file,
             )
-            self.update_latest_run_to_fia(self.last_recorded_run_from_file)
+            self.update_latest_run_to_fia_api(self.last_recorded_run_from_file)
             self.latest_known_run_from_fia = self.last_recorded_run_from_file
         if (
             self.latest_known_run_from_fia is not None
@@ -84,6 +84,10 @@ class LastRunDetector:
     ) -> requests.Response:
         """
         A helper function to handle multiple attempts at HTTP Requests
+        :param url_request_string: url of FIA API to get/put
+        :param method: GET or POST
+        :param values: dictionary to POST
+        :param retry_attempts: number of times to retry the request
         :return: a requests.Response object for handling
         """
         values = values
@@ -104,10 +108,11 @@ class LastRunDetector:
         # if retries failed, try one last time and return a response object for handling
         return requests.request(method=method, url=url_request_string, timeout=30)
 
-    def get_latest_run_from_fia(self, instrument: str) -> str | HTTPError | None:
+    def get_latest_run_from_fia_api(self, instrument: str) -> str | None:
         """
         Retrieve the latest run using FIA API
-        :return: Return the latest run for the instrument that is set on this object
+        :param instrument: name of instrument
+        :return: Return the latest run for the instrument that is set on this objector or None if unsuccessful
         """
         # Use request library to FIA API
         instrument_name = instrument
@@ -118,14 +123,16 @@ class LastRunDetector:
 
             if request.status_code == HTTPStatus.OK:
                 return request.json()["latest_run"]
-            raise HTTPError
+            request.raise_for_status()
 
         except HTTPError as e:
             raise e
 
-    def update_latest_run_to_fia(self, run_number: str) -> str | HTTPError | None:
+    def update_latest_run_to_fia_api(self, run_number: str) -> str | None:
         """
-        Update FIA API with the latest run number
+        Update FIA API with the latest run
+        :param run_number: number of run to update to FIA API
+        :return: confirmation string if successful
         """
         # Use request library to FIA API
         instrument_name = self.instrument[3:]
@@ -138,7 +145,7 @@ class LastRunDetector:
 
             if request.status_code == HTTPStatus.OK:
                 return f"Latest run update: run number {run_number}"
-            raise HTTPError
+            request.raise_for_status()
 
         except HTTPError as e:
             raise e
@@ -218,7 +225,7 @@ class LastRunDetector:
                 logger.exception(exception)
                 return
         self.callback(run_path)
-        self.update_latest_run_to_fia(run_number)
+        self.update_latest_run_to_fia_api(run_number)
         self.last_recorded_run_from_file = run_number
 
     def get_last_run_from_file(self) -> str:
