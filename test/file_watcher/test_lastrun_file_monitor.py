@@ -95,6 +95,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         mock_response = MagicMock()
         mock_request.return_value = mock_response
         mock_response.status_code = HTTPStatus.FORBIDDEN
+        mock_response.raise_for_status.side_effect = HTTPError
         with self.assertRaises(HTTPError):
             self.lrd.get_latest_run_from_fia_api("MARI")
 
@@ -122,9 +123,10 @@ class LastRunFileMonitorTest(unittest.TestCase):
         return_string = self.lrd.update_latest_run_to_fia_api("234")
         assert return_string == "Latest run update: run number 234"
 
-    def test_put_latest_run_to_fia_raises_exception(self):
+    def test_put_latest_run_to_fia_raises_exception_on_bad_status_code(self):
         self.lrd.retry_api_request = MagicMock()
         self.lrd.retry_api_request.return_value.status_code = HTTPStatus.FORBIDDEN
+        self.lrd.retry_api_request.return_value.raise_for_status.side_effect = HTTPError
         self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": 234}
 
         with self.assertRaises(HTTPError):
@@ -306,7 +308,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.retry_api_request.assert_called_once_with(
             url_request_string=f"{self.fia_api_url}/instrument/MARI/latest_run",
             method="PUT",
-            values={"latest_run": run_number},
+            body={"latest_run": run_number},
         )
 
     def test_find_file_in_instruments_data_folder_finds_file_in_instrument_data_folder(
