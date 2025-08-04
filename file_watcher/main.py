@@ -11,9 +11,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Union
 
+import requests
 from pika import BlockingConnection, ConnectionParameters, PlainCredentials  # type: ignore
-from pika.adapters.blocking_connection import BlockingChannel
-import requests  # type: ignore
+from pika.adapters.blocking_connection import BlockingChannel  # type: ignore
 
 from file_watcher.lastrun_file_monitor import create_last_run_detector
 from file_watcher.utils import logger
@@ -60,7 +60,7 @@ def write_readiness_probe_file(fia_api_url: str) -> None:
     :return: None
     """
     # Checking communication with FIA API before writing heartbeat
-    req = requests.get(f"{fia_api_url}/healthz",timeout=1)
+    req = requests.get(f"{fia_api_url}/healthz", timeout=1)
     if req.text == "ok":
         path = Path("/tmp/heartbeat")  # noqa: S108
         with path.open("w", encoding="utf-8") as file:
@@ -132,7 +132,9 @@ class FileWatcher:
         )
 
         try:
-            last_run_detector.watch_for_new_runs(callback_func=functools.partial(write_readiness_probe_file, self.config.fia_api_url))
+            last_run_detector.watch_for_new_runs(
+                callback_func=functools.partial(write_readiness_probe_file, self.config.fia_api_url)
+            )
         except Exception as exception:
             logger.info("File observer fell over watching because of the following exception:")
             logger.exception(exception)
