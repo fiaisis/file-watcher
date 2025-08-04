@@ -10,7 +10,7 @@ import time
 from http import HTTPStatus
 from pathlib import Path
 from time import sleep
-from typing import Callable, Union
+from typing import Any, Callable, Literal, Union, cast
 
 import requests
 from requests import HTTPError
@@ -56,7 +56,8 @@ class LastRunDetector:
         try:
             self.latest_known_run_from_fia = self.get_latest_run_from_fia_api(self.instrument)
         except HTTPError as e:
-            print("an error occured: ", e)
+            logger.fatal("Failed to get last run from FIA API: ", e)
+            raise e
 
         logger.info("Last run from FIA is: %s", self.latest_known_run_from_fia)
         if self.latest_known_run_from_fia is None or self.latest_known_run_from_fia == "None":
@@ -80,22 +81,25 @@ class LastRunDetector:
             self.latest_known_run_from_fia = self.last_recorded_run_from_file
 
     def retry_api_request(
-        self, url_request_string: str, method="GET", values=None, retry_attempts=5
+        self,
+        url_request_string: str,
+        method: Literal["GET", "POST", "PATCH", "PUT", "DELETE"],
+        body: dict[Any, Any] | None = None,
+        retry_attempts: int = 5,
     ) -> requests.Response:
         """
         A helper function to handle multiple attempts at HTTP Requests
         :param url_request_string: url of FIA API to get/put
         :param method: GET or POST
-        :param values: dictionary to POST
+        :param body: dictionary to POST
         :param retry_attempts: number of times to retry the request
         :return: a requests.Response object for handling
         """
-        values = values
         attempts = 0
         auth = HTTPBasicAuth("apikey", self.fia_api_api_key)
         while attempts < retry_attempts:
             req = requests.request(
-                method=method, url=url_request_string, timeout=self.request_timeout_length, auth=auth, json=values
+                method=method, url=url_request_string, timeout=self.request_timeout_length, auth=auth, json=body
             )
             attempts += 1
             if req.status_code == HTTPStatus.OK:
@@ -121,14 +125,14 @@ class LastRunDetector:
                 url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run", method="GET"
             )
 
-            if request.status_code == HTTPStatus.OK:
-                return request.json()["latest_run"]
             request.raise_for_status()
+            return cast("str | None", request.json()["latest_run"])
 
         except HTTPError as e:
+            logger.warning("Failed to get latest run: ", exc_info=e)
             raise e
 
-    def update_latest_run_to_fia_api(self, run_number: str) -> str | None:
+    def update_latest_run_to_fia_api(self, run_number: str) -> str:
         """
         Update FIA API with the latest run
         :param run_number: number of run to update to FIA API
@@ -140,14 +144,14 @@ class LastRunDetector:
             request = self.retry_api_request(
                 url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run",
                 method="PUT",
-                values={"latest_run": run_number},
+                body={"latest_run": run_number},
             )
 
-            if request.status_code == HTTPStatus.OK:
-                return f"Latest run update: run number {run_number}"
             request.raise_for_status()
+            return f"Latest run update: run number {run_number}"
 
         except HTTPError as e:
+            logger.warning("Failed to update latest run: ", exc_info=e)
             raise e
 
     def watch_for_new_runs(self, callback_func: Callable[[], None], run_once: bool = False) -> None:
