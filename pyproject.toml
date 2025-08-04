@@ -34,7 +34,8 @@ code-inspection = [
     "mypy==1.16.1",
     "types-PyYAML==6.0.12.20250516",
     "file_watcher[test]",
-    "file_watcher[operator]"
+    "file_watcher[operator]",
+    "types-requests==2.32.4.20250611"
 ]
 
 dev = [
