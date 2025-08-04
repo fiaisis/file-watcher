@@ -4,8 +4,7 @@ readme = "README.md"
 version = "0.0.1"
 dependencies = [
     "pika==1.3.2",
-    "psycopg2==2.9.10",
-    "SQLAlchemy==2.0.41",
+    "requests==2.32.4",
 ]
 
 [project.urls]
@@ -35,7 +34,8 @@ code-inspection = [
     "mypy==1.17.0",
     "types-PyYAML==6.0.12.20250516",
     "file_watcher[test]",
-    "file_watcher[operator]"
+    "file_watcher[operator]",
+    "types-requests==2.32.4.20250611"
 ]
 
 dev = [

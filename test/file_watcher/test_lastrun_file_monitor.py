@@ -1,9 +1,12 @@
 import datetime
 import tempfile
 import unittest
+from http import HTTPStatus
 from pathlib import Path
 from unittest import mock
 from unittest.mock import MagicMock, call, patch
+
+from requests import HTTPError
 
 from file_watcher.lastrun_file_monitor import create_last_run_detector
 from test.file_watcher.utils import AwaitableNonAsyncMagicMock
@@ -11,25 +14,33 @@ from test.file_watcher.utils import AwaitableNonAsyncMagicMock
 
 class LastRunFileMonitorTest(unittest.TestCase):
     def setUp(self):
-        self.db_updater_patch = patch("file_watcher.lastrun_file_monitor.DBUpdater")
-        self.db_updater_mock = self.db_updater_patch.start()
+        self.latest_run = "1234"
         self.create_instrument_files()
         self.callback = MagicMock()
         self.run_file_prefix = MagicMock()
-        self.db_ip = MagicMock()
-        self.db_username = MagicMock()
-        self.db_password = MagicMock()
+        self.fia_api_url = MagicMock()
+        self.fia_api_api_key = MagicMock()
+        with patch("file_watcher.lastrun_file_monitor.requests.request") as mock_request:
+            mock_request.return_value.status_code = 200
+            self.lrd = create_last_run_detector(
+                self.archive_path,
+                self.instrument,
+                self.callback,
+                self.run_file_prefix,
+                self.fia_api_url,
+                self.fia_api_api_key,
+                request_timeout_length=0,
+            )
 
     def tearDown(self):
-        self.db_updater_patch.stop()
         self.archive_temp_dir.cleanup()
 
     def create_instrument_files(self):
         # Create this instrument
         self.archive_temp_dir = tempfile.TemporaryDirectory()
         self.archive_path = Path(self.archive_temp_dir.name)
-        self.path = Path(self.archive_path, "instrument_name")
-        self.instrument = "instrument_name"
+        self.instrument = "MARI"
+        self.path = Path(self.archive_path, self.instrument)
         self.path = self.path / "Instrument" / "logs"
         self.path.mkdir(parents=True, exist_ok=True)
         self.path = self.path / "lastrun.txt"
@@ -40,6 +51,15 @@ class LastRunFileMonitorTest(unittest.TestCase):
         wish_path = self.archive_path / "NDXWISH" / "instrument" / "data" / "cycle_23_2"
         wish_path.mkdir(parents=True, exist_ok=True)
 
+    def mock_response(self):
+        """
+        Return a mock response object for testing.
+        """
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {}
+        return response
+
     @patch("file_watcher.lastrun_file_monitor.LastRunDetector")
     def test_create_last_run_detector(self, mock_lrd):
         create_last_run_detector(
@@ -47,9 +67,8 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.instrument,
             self.callback,
             self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
+            self.fia_api_url,
+            self.fia_api_api_key,
         )
 
         mock_lrd.assert_called_once_with(
@@ -57,37 +76,63 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.instrument,
             self.callback,
             self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
+            self.fia_api_url,
+            self.fia_api_api_key,
+            1,
         )
 
-    def test_get_latest_run_from_db(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
+    @patch("file_watcher.lastrun_file_monitor.requests.request")
+    def test_get_latest_run_from_fia_api_api(self, mock_request):
+        last_run = 1234
+        self.lrd.retry_api_request = MagicMock()
+        self.lrd.retry_api_request.return_value.status_code = HTTPStatus.OK
+        self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": last_run}
 
-        self.lrd.get_latest_run_from_db()
+        assert self.lrd.get_latest_run_from_fia_api("MARI") == last_run
 
-        self.db_updater_mock.return_value.get_latest_run.assert_called_with(self.instrument[3:])
-        assert self.db_updater_mock.return_value.get_latest_run.call_count == 2  # noqa: PLR2004
+    @patch("file_watcher.lastrun_file_monitor.requests.request")
+    def test_get_latest_run_from_fia_api_raises_exception_on_bad_status_code(self, mock_request):
+        mock_response = MagicMock()
+        mock_request.return_value = mock_response
+        mock_response.status_code = HTTPStatus.FORBIDDEN
+        mock_response.raise_for_status.side_effect = HTTPError
+        with self.assertRaises(HTTPError):
+            self.lrd.get_latest_run_from_fia_api("MARI")
+
+    @patch("file_watcher.lastrun_file_monitor.requests.request")
+    def test_retry_api_request_retries_connection(self, mock_request):
+        url = "localhost:8000/instrument/MARI/latest_run"
+        method = "GET"
+        retry = 3
+        first_response = MagicMock()
+        first_response.status_code = HTTPStatus.FORBIDDEN
+        second_response = MagicMock()
+        second_response.status_code = HTTPStatus.OK
+        mock_request.side_effect = [first_response, second_response]
+        expected_call_count = 2
+
+        response = self.lrd.retry_api_request(url_request_string=url, method=method, retry_attempts=retry)
+        assert mock_request.call_count == expected_call_count
+        assert response.status_code == HTTPStatus.OK
+
+    def test_put_latest_run_to_fia_api(self):
+        self.lrd.retry_api_request = MagicMock()
+        self.lrd.retry_api_request.return_value.status_code = 200
+        self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": 234}
+
+        return_string = self.lrd.update_latest_run_to_fia_api("234")
+        assert return_string == "Latest run update: run number 234"
+
+    def test_put_latest_run_to_fia_raises_exception_on_bad_status_code(self):
+        self.lrd.retry_api_request = MagicMock()
+        self.lrd.retry_api_request.return_value.status_code = HTTPStatus.FORBIDDEN
+        self.lrd.retry_api_request.return_value.raise_for_status.side_effect = HTTPError
+        self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": 234}
+
+        with self.assertRaises(HTTPError):
+            self.lrd.update_latest_run_to_fia_api("234")
 
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         now = datetime.datetime.now(datetime.UTC)
         self.lrd.last_cycle_folder_check = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
             seconds=21601
@@ -102,15 +147,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert self.lrd.last_cycle_folder_check > now
 
     def test_watch_for_new_runs_checks_contents_of_last_run_file(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         self.lrd.get_last_run_from_file = MagicMock()
 
         self.lrd.watch_for_new_runs(mock.MagicMock(), run_once=True)
@@ -118,15 +154,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.get_last_run_from_file.assert_called_once_with()
 
     def test_watch_for_new_runs_calls_callback_func(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         callback_func = mock.MagicMock()
 
         self.lrd.watch_for_new_runs(callback_func, run_once=True)
@@ -134,15 +161,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         callback_func.assert_called_once_with()
 
     def test_watch_for_new_runs_handles_exceptions_from_get_last_run_from_file(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         exception = RuntimeError("EXCEPTIONS!")
 
         def raise_exception():
@@ -158,15 +176,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
             logger.exception.assert_called_once_with(exception)
 
     def test_latest_run_is_new(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         self.lrd.get_last_run_from_file = MagicMock(return_value="0002")
         self.lrd.new_run_detected = AwaitableNonAsyncMagicMock()
 
@@ -176,15 +185,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.new_run_detected.assert_called_once_with("0002")
 
     def test_latest_run_is_new_and_more_than_one_file(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         self.lrd.get_last_run_from_file = MagicMock(return_value="0003")
         self.lrd.recover_lost_runs = AwaitableNonAsyncMagicMock()
 
@@ -194,15 +194,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.recover_lost_runs.assert_called_with("0001", "0003")
 
     def test_latest_run_is_not_new(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         self.lrd.get_last_run_from_file = MagicMock(return_value="0001")
         self.lrd.recover_lost_runs = AwaitableNonAsyncMagicMock()
         self.lrd.new_run_detected = AwaitableNonAsyncMagicMock()
@@ -214,15 +205,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.new_run_detected.assert_not_called()
 
     def test_generate_run_path_functions_as_expected(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         self.lrd.lastest_cycle = "cycle_23_2"
         self.lrd.run_file_prefix = "TMP"
         expected_path = self.path.parent.parent / "data" / "cycle_23_2"
@@ -236,16 +218,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert expected_path == returned_path
 
     def test_generate_run_path_handles_the_file_not_existing(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
-
         def raise_exception():
             raise Exception()
 
@@ -257,15 +229,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
     def test_generate_run_path_handles_the_file_not_existing_where_expected_but_in_another_folder(
         self,
     ):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         expected_path = MagicMock()
         self.lrd.find_file_in_instruments_data_folder = MagicMock(return_value=expected_path)
 
@@ -275,33 +238,16 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert expected_path == returned_path
 
     def test_new_run_detected_handles_just_run_number(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
-        self.lrd.update_db_with_latest_run = MagicMock()
+        self.lrd.update_latest_run_to_fia_api = MagicMock()
         run_path = MagicMock()
         self.lrd.generate_run_path = MagicMock(return_value=run_path)
 
         self.lrd.new_run_detected("0001")
 
-        self.lrd.update_db_with_latest_run.assert_called_once_with("0001")
+        self.lrd.update_latest_run_to_fia_api.assert_called_once_with("0001")
+        assert self.lrd.last_recorded_run_from_file == "0001"
 
     def test_new_run_detected_handles_file_not_found_by_generate_run_path(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         exception = FileNotFoundError("FILE NOT FOUND!")
 
         def raise_file_not_found(_):
@@ -317,15 +263,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.generate_run_path.assert_called_once_with("0001")
 
     def test_get_last_run_from_file_raises_when_file_formatted_poorly(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         with tempfile.NamedTemporaryFile(delete=False) as fp:
             fp.write(b"Hello world!")
             path = Path(fp.name)
@@ -335,15 +272,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.assertRaises(RuntimeError, self.lrd.get_last_run_from_file)  # noqa: PT027
 
     def test_recover_lost_runs_finds_runs_that_were_lost(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
+        self.lrd.update_latest_run_to_fia_api = MagicMock(return_value="Latest run update: run number 0001")
         self.lrd.generate_run_path = MagicMock(return_value=Path("/run/path/NDXMARI/MAR001"))
 
         self.lrd.recover_lost_runs("0001", "0003")
@@ -352,15 +281,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert self.lrd.generate_run_path.call_count == 2  # noqa: PLR2004
 
     def test_recover_lost_runs_handles_file_not_found_twice(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         exception = FileNotFoundError("FILE NOT FOUND!")
 
         def raise_file_not_found(_):
@@ -376,35 +296,24 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert self.lrd.generate_run_path.call_args_list == [call("0002"), call("002"), call("0003"), call("003")]
         assert self.lrd.generate_run_path.call_count == 4  # noqa: PLR2004
 
-    def test_update_db_with_latest_run_sends_instrument_minus_ndx(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
+    def test_update_latest_run_to_fia_api_sends_instrument_minus_ndx(self):
         self.lrd.instrument = "NDXMARI"
-        self.lrd.db_updater.update_latest_run = MagicMock()
+        run_number = "0001"
+        response = MagicMock()
+        response.status_code = 200
+        self.lrd.retry_api_request = MagicMock()
+        self.lrd.retry_api_request.return_value = response
+        self.lrd.update_latest_run_to_fia_api(run_number)
 
-        self.lrd.update_db_with_latest_run("0001")
-
-        self.lrd.db_updater.update_latest_run.assert_called_once_with("MARI", 1)
+        self.lrd.retry_api_request.assert_called_once_with(
+            url_request_string=f"{self.fia_api_url}/instrument/MARI/latest_run",
+            method="PUT",
+            body={"latest_run": run_number},
+        )
 
     def test_find_file_in_instruments_data_folder_finds_file_in_instrument_data_folder(
         self,
     ):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         run_number = "0001"
         self.lrd.archive_path = MagicMock()
         instrument_dir = self.lrd.archive_path.joinpath.return_value.joinpath.return_value
@@ -418,15 +327,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
         assert return_value == "banana"
 
     def test_get_latest_cycle_handles_lack_of_cycles_in_archive(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         with tempfile.TemporaryDirectory() as tmpdirname:
             path = Path(tmpdirname)
             self.lrd.archive_path = path
@@ -436,15 +336,6 @@ class LastRunFileMonitorTest(unittest.TestCase):
             self.assertRaises(FileNotFoundError, self.lrd.get_latest_cycle)  # noqa: PT027
 
     def test_get_latest_cycle_finds_latest_cycle(self):
-        self.lrd = create_last_run_detector(
-            self.archive_path,
-            self.instrument,
-            self.callback,
-            self.run_file_prefix,
-            self.db_ip,
-            self.db_username,
-            self.db_password,
-        )
         with tempfile.TemporaryDirectory() as tmpdirname:
             path = Path(tmpdirname)
             self.lrd.archive_path = path
