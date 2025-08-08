@@ -1,12 +1,11 @@
-import pytest
 import datetime
 import tempfile
-import unittest
 from http import HTTPStatus
 from pathlib import Path
 from unittest import mock
 from unittest.mock import MagicMock, call, patch
 
+import pytest
 from requests import HTTPError
 
 from file_watcher.lastrun_file_monitor import create_last_run_detector
@@ -224,7 +223,7 @@ class TestLastRunFileMonitor:
 
         self.lrd.find_file_in_instruments_data_folder = MagicMock(side_effect=raise_exception)
 
-        with pytest.raises(FileNotFoundError):  # noqa: PT027
+        with pytest.raises(FileNotFoundError):
             self.lrd.generate_run_path("0001")
 
     def test_generate_run_path_handles_the_file_not_existing_where_expected_but_in_another_folder(
@@ -270,7 +269,7 @@ class TestLastRunFileMonitor:
 
         self.lrd.last_run_file = path
 
-        pytest.raises(RuntimeError, self.lrd.get_last_run_from_file)  # noqa: PT027
+        pytest.raises(RuntimeError, self.lrd.get_last_run_from_file)
 
     def test_recover_lost_runs_finds_runs_that_were_lost(self):
         self.lrd.update_latest_run_to_fia_api = MagicMock(return_value="Latest run update: run number 0001")
@@ -334,7 +333,7 @@ class TestLastRunFileMonitor:
             path = path / "NDXWISH" / "instrument" / "data"
             path.mkdir(parents=True, exist_ok=True)
 
-            pytest.raises(FileNotFoundError, self.lrd.get_latest_cycle)  # noqa: PT027
+            pytest.raises(FileNotFoundError, self.lrd.get_latest_cycle)
 
     def test_get_latest_cycle_finds_latest_cycle(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
