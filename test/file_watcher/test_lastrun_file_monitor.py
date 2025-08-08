@@ -1,3 +1,4 @@
+import pytest
 import datetime
 import tempfile
 import unittest
@@ -12,8 +13,8 @@ from file_watcher.lastrun_file_monitor import create_last_run_detector
 from test.file_watcher.utils import AwaitableNonAsyncMagicMock
 
 
-class LastRunFileMonitorTest(unittest.TestCase):
-    def setUp(self):
+class TestLastRunFileMonitor:
+    def setup_method(self):
         self.latest_run = "1234"
         self.create_instrument_files()
         self.callback = MagicMock()
@@ -32,7 +33,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
                 request_timeout_length=0,
             )
 
-    def tearDown(self):
+    def teardown_method(self):
         self.archive_temp_dir.cleanup()
 
     def create_instrument_files(self):
@@ -96,7 +97,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         mock_request.return_value = mock_response
         mock_response.status_code = HTTPStatus.FORBIDDEN
         mock_response.raise_for_status.side_effect = HTTPError
-        with self.assertRaises(HTTPError):
+        with pytest.raises(HTTPError):
             self.lrd.get_latest_run_from_fia_api("MARI")
 
     @patch("file_watcher.lastrun_file_monitor.requests.request")
@@ -129,7 +130,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
         self.lrd.retry_api_request.return_value.raise_for_status.side_effect = HTTPError
         self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": 234}
 
-        with self.assertRaises(HTTPError):
+        with pytest.raises(HTTPError):
             self.lrd.update_latest_run_to_fia_api("234")
 
     def test_watch_for_new_runs_checks_for_latest_cycle_after_6_hours(self):
@@ -223,7 +224,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         self.lrd.find_file_in_instruments_data_folder = MagicMock(side_effect=raise_exception)
 
-        with self.assertRaises(FileNotFoundError):  # noqa: PT027
+        with pytest.raises(FileNotFoundError):  # noqa: PT027
             self.lrd.generate_run_path("0001")
 
     def test_generate_run_path_handles_the_file_not_existing_where_expected_but_in_another_folder(
@@ -269,7 +270,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
 
         self.lrd.last_run_file = path
 
-        self.assertRaises(RuntimeError, self.lrd.get_last_run_from_file)  # noqa: PT027
+        pytest.raises(RuntimeError, self.lrd.get_last_run_from_file)  # noqa: PT027
 
     def test_recover_lost_runs_finds_runs_that_were_lost(self):
         self.lrd.update_latest_run_to_fia_api = MagicMock(return_value="Latest run update: run number 0001")
@@ -333,7 +334,7 @@ class LastRunFileMonitorTest(unittest.TestCase):
             path = path / "NDXWISH" / "instrument" / "data"
             path.mkdir(parents=True, exist_ok=True)
 
-            self.assertRaises(FileNotFoundError, self.lrd.get_latest_cycle)  # noqa: PT027
+            pytest.raises(FileNotFoundError, self.lrd.get_latest_cycle)  # noqa: PT027
 
     def test_get_latest_cycle_finds_latest_cycle(self):
         with tempfile.TemporaryDirectory() as tmpdirname:

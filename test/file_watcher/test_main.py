@@ -1,6 +1,5 @@
 import os
 import tempfile
-import unittest
 from pathlib import Path
 from unittest import mock
 from unittest.mock import patch
@@ -9,8 +8,8 @@ from file_watcher.main import FileWatcher, load_config, main
 from test.file_watcher.utils import AwaitableNonAsyncMagicMock
 
 
-class MainTest(unittest.TestCase):
-    def setUp(self):
+class TestMain:
+    def setup_method(self):
         self.config = load_config()
 
     def test_load_config_defaults(self):
@@ -23,9 +22,8 @@ class MainTest(unittest.TestCase):
         assert config.watch_dir == Path("/archive")
         assert config.run_file_prefix == "MAR"
         assert config.instrument_folder == "NDXMARI"
-        assert config.db_ip == "localhost"
-        assert config.db_username == "admin"
-        assert config.db_password == "admin"  # noqa: S105
+        assert config.fia_api_url == "localhost:8000"
+        assert config.fia_api_api_key == "shh"
 
     def test_load_config_environ_vars(self):
         host = str(mock.MagicMock())
@@ -35,9 +33,8 @@ class MainTest(unittest.TestCase):
         watch_dir = "/" + str(mock.MagicMock())
         run_file_prefix = str(mock.MagicMock())
         instrument_folder = str(mock.MagicMock())
-        db_ip = str(mock.MagicMock())
-        db_username = str(mock.MagicMock())
-        db_password = str(mock.MagicMock())
+        fia_api_url = str(mock.MagicMock())
+        fia_api_api_key = str(mock.MagicMock())
 
         os.environ["QUEUE_HOST"] = host
         os.environ["QUEUE_USER"] = username
@@ -46,9 +43,8 @@ class MainTest(unittest.TestCase):
         os.environ["WATCH_DIR"] = watch_dir
         os.environ["FILE_PREFIX"] = run_file_prefix
         os.environ["INSTRUMENT_FOLDER"] = instrument_folder
-        os.environ["DB_IP"] = db_ip
-        os.environ["DB_USERNAME"] = db_username
-        os.environ["DB_PASSWORD"] = db_password
+        os.environ["FIA_API_URL"] = fia_api_url
+        os.environ["FIA_API_API_KEY"] = fia_api_api_key
 
         config = load_config()
 
@@ -58,9 +54,8 @@ class MainTest(unittest.TestCase):
         assert config.watch_dir == Path(watch_dir)
         assert config.run_file_prefix == run_file_prefix
         assert config.instrument_folder == instrument_folder
-        assert config.db_ip == db_ip
-        assert config.db_username == db_username
-        assert config.db_password == db_password
+        assert config.fia_api_url == fia_api_url
+        assert config.fia_api_api_key == fia_api_api_key
 
     @patch("file_watcher.main.FileWatcher.producer_channel")
     def test_file_watcher_on_event_produces_message(self, mock_producer):
