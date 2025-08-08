@@ -41,10 +41,10 @@ def generate_deployment_body(
     queue_host = os.environ.get("QUEUE_HOST", "rabbitmq-cluster.rabbitmq.svc.cluster.local")
     queue_name = os.environ.get("EGRESS_QUEUE_NAME", "watched-files")
     file_watcher_sha = os.environ.get("FILE_WATCHER_SHA256", "")
-    db_ip = os.environ.get("DB_IP", "localhost")
     archive_pvc_name = f"filewatcher-{name}-pvc"
     archive_pv_name = f"filewatcher-{name}-pv"
     namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
+    fia_api_url = os.environ.get("FIA_API_URL", "localhost:8000")
     deployment_spec = yaml.safe_load(
         f"""
             apiVersion: apps/v1
@@ -78,8 +78,8 @@ def generate_deployment_body(
                       value: {spec.get("filePrefix", "MAR")}
                     - name: INSTRUMENT_FOLDER
                       value: {spec.get("instrumentFolder", "NDXMAR")}
-                    - name: DB_IP
-                      value: {db_ip}
+                    - name: FIA_API_URL
+                      value: {fia_api_url}
 
                     # Secrets
                     - name: QUEUE_USER
@@ -92,16 +92,11 @@ def generate_deployment_body(
                         secretKeyRef:
                           name: filewatcher-secrets
                           key: queue_password
-                    - name: DB_USERNAME
+                    - name: FIA_API_API_KEY
                       valueFrom:
                         secretKeyRef:
-                          name: filewatcher-secrets
-                          key: db_username
-                    - name: DB_PASSWORD
-                      valueFrom:
-                        secretKeyRef:
-                          name: filewatcher-secrets
-                          key: db_password
+                          name: fia-api
+                          key: fia_api_api_key
                     readinessProbe:
                       exec:
                         command:

@@ -2,6 +2,7 @@
 Main module
 """
 
+import functools
 import os
 import time
 from collections.abc import Generator
@@ -10,6 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Union
 
+import requests
 from pika import BlockingConnection, ConnectionParameters, PlainCredentials  # type: ignore
 from pika.adapters.blocking_connection import BlockingChannel  # type: ignore
 
@@ -30,9 +32,8 @@ class Config:
     watch_dir: Path
     run_file_prefix: str
     instrument_folder: str
-    db_ip: str
-    db_username: str
-    db_password: str
+    fia_api_url: str
+    fia_api_api_key: str
 
 
 def load_config() -> Config:
@@ -48,20 +49,22 @@ def load_config() -> Config:
         Path(os.environ.get("WATCH_DIR", "/archive")),
         os.environ.get("FILE_PREFIX", "MAR"),
         os.environ.get("INSTRUMENT_FOLDER", "NDXMARI"),
-        os.environ.get("DB_IP", "localhost"),
-        os.environ.get("DB_USERNAME", "admin"),
-        os.environ.get("DB_PASSWORD", "admin"),
+        os.environ.get("FIA_API_URL", "localhost:8000"),
+        os.environ.get("FIA_API_API_KEY", "shh"),
     )
 
 
-def write_readiness_probe_file() -> None:
+def write_readiness_probe_file(fia_api_url: str) -> None:
     """
     Write the file with the timestamp for the readinessprobe
     :return: None
     """
-    path = Path("/tmp/heartbeat")  # noqa: S108
-    with path.open("w", encoding="utf-8") as file:
-        file.write(time.strftime("%Y-%m-%d %H:%M:%S"))
+    # Checking communication with FIA API before writing heartbeat
+    req = requests.get(f"{fia_api_url}/healthz", timeout=1)
+    if req.text == "ok":
+        path = Path("/tmp/heartbeat")  # noqa: S108
+        with path.open("w", encoding="utf-8") as file:
+            file.write(time.strftime("%Y-%m-%d %H:%M:%S"))
 
 
 class FileWatcher:
@@ -113,7 +116,7 @@ class FileWatcher:
         Start the PollingObserver with the queue based event handler and the given queue
         :return: None
         """
-        write_readiness_probe_file()
+        write_readiness_probe_file(self.config.fia_api_url)
 
         def _event_occurred(path_to_add: Union[Path, None]) -> None:
             if path_to_add is not None:
@@ -124,13 +127,14 @@ class FileWatcher:
             self.config.instrument_folder,
             _event_occurred,
             run_file_prefix=self.config.run_file_prefix,
-            db_ip=self.config.db_ip,
-            db_username=self.config.db_username,
-            db_password=self.config.db_password,
+            fia_api_url=self.config.fia_api_url,
+            fia_api_api_key=self.config.fia_api_api_key,
         )
 
         try:
-            last_run_detector.watch_for_new_runs(callback_func=write_readiness_probe_file)
+            last_run_detector.watch_for_new_runs(
+                callback_func=functools.partial(write_readiness_probe_file, self.config.fia_api_url)
+            )
         except Exception as exception:
             logger.info("File observer fell over watching because of the following exception:")
             logger.exception(exception)
