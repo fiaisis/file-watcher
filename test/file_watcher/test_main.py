@@ -20,11 +20,6 @@ def file_watcher(config):
     return FileWatcher(config)
 
 
-# def _event_occurred(path_to_add: Union[Path, None]) -> None:
-#   if path_to_add is not None:
-#      self.on_event(path_to_add)
-
-
 @pytest.fixture
 def clear_environment():
     yield
