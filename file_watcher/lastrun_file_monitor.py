@@ -26,7 +26,7 @@ class LastRunDetector:
 
     def __init__(
         self,
-        archive_path: Path,
+        last_run_file: Path,
         instrument: str,
         callback: Callable[[Path | None], None],
         run_file_prefix: str,
@@ -39,8 +39,8 @@ class LastRunDetector:
         self.fia_api_api_key = fia_api_api_key
         self.run_file_prefix = run_file_prefix
         self.callback = callback
-        self.archive_path = archive_path
-        self.last_run_file = archive_path.joinpath(instrument).joinpath("Instrument/logs/lastrun.txt")
+        self.last_run_file = last_run_file
+        self.instrument_data_path = last_run_file.parent.parent.joinpath("data")
         self.last_recorded_run_from_file = self.get_last_run_from_file()
         self.request_timeout_length = request_timeout_length
         logger.info(
@@ -204,12 +204,8 @@ class LastRunDetector:
         :param run_number: The run number to generate and check for
         :return: The path to the file for the run number
         """
-        path = (
-            self.archive_path.joinpath(self.instrument)
-            .joinpath("Instrument/data")
-            .joinpath(self.latest_cycle)
-            .joinpath(self.run_file_prefix + run_number + ".nxs")
-        )
+        path = (self.instrument_data_path.joinpath(self.latest_cycle)
+                .joinpath(self.run_file_prefix + run_number + ".nxs"))
         if not path.exists():
             try:
                 path = self.find_file_in_instruments_data_folder(run_number)
@@ -295,25 +291,19 @@ class LastRunDetector:
         :param run_number: The run number you need to go and find
         :return: The Path if it exists of the run number
         """
-        instrument_dir = self.archive_path.joinpath(self.instrument).joinpath("Instrument/data")
-        return next(instrument_dir.rglob(f"cycle_??_?/*{run_number}.nxs"))
+        return next(self.instrument_data_path.rglob(f"cycle_??_?/*{run_number}.nxs"))
 
     def get_latest_cycle(self) -> str:
         """
-        Gets the latest cycle, uses NDXWISH as the bases of it, as it is a TS2 instrument and allows for
-        significantly reduced complications vs TS1 instruments who collected data in cycles_98_1 and so on (centuries
-        and all that being rather complicated for a machine to understand without appropriate context).
-        :return: The latest cycle in the WISH folder.
+        Get the latest cycle for the given instrument
         """
         logger.info("Finding latest cycle...")
-        # Use WISH (or any other TS2 instrument as their data started in 2008 and avoids the 98/99 issue of TS1
-        # instruments) to determine which is the most recent cycle.
-        all_cycles = os.listdir(f"{self.archive_path}/NDXWISH/instrument/data/")  # noqa: PTH208
+        all_cycles = os.listdir(self.instrument_data_path)  # noqa: PTH208
         all_cycles.sort()
         try:
             most_recent_cycle = all_cycles[-1]
         except IndexError as exc:
-            raise FileNotFoundError(f"No cycles present in archive path: {self.archive_path}") from exc
+            raise FileNotFoundError(f"No cycles present in path: {self.instrument_data_path}") from exc
         logger.info("Latest cycle found: %s", most_recent_cycle)
         return most_recent_cycle
 
