@@ -119,7 +119,7 @@ def test_file_watcher_on_event_skips_dir_creation(mock_producer, logger, file_wa
 @patch("file_watcher.main.create_last_run_detector")
 @patch("file_watcher.main.logger")
 def test_file_watcher_start_watching_handles_exceptions_from_watcher(
-    mock_logger, mock_create_last_run_detector, mock_write_readiness_probe_file, file_watcher
+    mock_logger, mock_create_last_run_detector, mock_write_readiness_probe_file, file_watcher, config
 ):
     exception = Exception("CRAZY EXCEPTION!")
 
@@ -133,48 +133,33 @@ def test_file_watcher_start_watching_handles_exceptions_from_watcher(
     # Should not raise, if raised it does not handle exceptions correctly
     file_watcher.start_watching()
 
-    mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(
-        callback_func=mock_write_readiness_probe_file
+    assert mock_create_last_run_detector.return_value.watch_for_new_runs.call_count == 1
+    assert mock_create_last_run_detector.return_value.watch_for_new_runs.call_args.kwargs["callback_func"].args == (
+        config.fia_api_url,  # this needs to be a tuple
+    )
+    assert (
+        mock_create_last_run_detector.return_value.watch_for_new_runs.call_args.kwargs["callback_func"].func
+        == mock_write_readiness_probe_file
     )
     mock_logger.info.assert_called_with("File observer fell over watching because of the following exception:")
     mock_logger.exception.assert_called_with(exception)
 
 
+@patch("file_watcher.main.write_readiness_probe_file")
 @patch("file_watcher.main.create_last_run_detector")
-def test_file_watcher_start_watching_creates_last_run_detector(mock_create_last_run_detector, file_watcher):
-    # This test needs a rename and write a test that actually does create LRD when start_watching() is called
+def test_file_watcher_start_watching_creates_last_run_detector(
+    mock_create_last_run_detector, mock_write_readiness_probe_file, file_watcher, config
+):
+    file_watcher.start_watching()
 
-    with mock.patch("file_watcher.main.write_readiness_probe_file") as write_readiness_probe_file_mock:
-        file_watcher.start_watching()
-
-    mock_create_last_run_detector.return_value.watch_for_new_runs = mock.AsyncMock()
-
-    mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(
-        callback_func=write_readiness_probe_file_mock
+    assert mock_create_last_run_detector.return_value.watch_for_new_runs.call_count == 1
+    assert mock_create_last_run_detector.return_value.watch_for_new_runs.call_args.kwargs["callback_func"].args == (
+        config.fia_api_url,  # this needs to be a tuple
     )
-
-
-# New one, an attempt anyway
-@patch("file_watcher.main.create_last_run_detector")
-# @patch("file_watcher.main.write_readiness_probe_file")
-def test_file_watcher_start_watching_creates_last_run_detector(mock_create_last_run_detector, file_watcher, config):
-    # This test needs a rename and to write a test that actually does create LRD when start_watching() is called
-    with mock.patch("file_watcher.main.write_readiness_probe_file") as write_readiness_probe_file_mock:
-        write_readiness_probe_file_mock.side_effect = ()
-        file_watcher.start_watching()
-
-    mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(
-        callback_func=write_readiness_probe_file_mock
+    assert (
+        mock_create_last_run_detector.return_value.watch_for_new_runs.call_args.kwargs["callback_func"].func
+        == mock_write_readiness_probe_file
     )
-
-    # mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(
-    #   config.watch_dir,
-    #  config.instrument_folder,
-    # callback_func=write_readiness_probe_file_mock,
-    # run_file_prefix=config.run_file_prefix,
-    # fia_api_url=config.fia_api_url,
-    # fia_api_api_key=config.fia_api_api_key,
-    # )
 
 
 @patch("file_watcher.main.load_config")
