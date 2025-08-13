@@ -27,7 +27,7 @@ class Config:
     username: str
     password: str
     queue_name: str
-    watch_dir: Path
+    watch_file: Path
     run_file_prefix: str
     instrument_folder: str
     db_ip: str
@@ -45,7 +45,7 @@ def load_config() -> Config:
         os.environ.get("QUEUE_USER", "guest"),
         os.environ.get("QUEUE_PASSWORD", "guest"),
         os.environ.get("EGRESS_QUEUE_NAME", "watched-files"),
-        Path(os.environ.get("WATCH_DIR", "/archive")),
+        Path(os.environ.get("WATCH_FILE", "/archive/NDXMARI/Instrument/logs/lastrun.txt")),
         os.environ.get("FILE_PREFIX", "MAR"),
         os.environ.get("INSTRUMENT_FOLDER", "NDXMARI"),
         os.environ.get("DB_IP", "localhost"),
@@ -120,7 +120,7 @@ class FileWatcher:
                 self.on_event(path_to_add)
 
         last_run_detector = create_last_run_detector(
-            self.config.watch_dir,
+            self.config.watch_file,
             self.config.instrument_folder,
             _event_occurred,
             run_file_prefix=self.config.run_file_prefix,

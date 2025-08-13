@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 from collections.abc import Mapping, MutableMapping
+from kubernetes import client
 from typing import Any
 
 import kopf
@@ -28,16 +29,92 @@ logger = logging.getLogger(__name__)
 logging.getLogger("aiohttp.access").addFilter(EndpointFilter())
 
 
+def setup_imat_pvcs_pvs(deployment_spec: Mapping[str, Any], namespace: str, name: str, children: list[Any] | None) -> Mapping[str, Any]:
+    imat_pv_name = "filewatcher-ndximat-data-pv"
+    imat_pvc_name = "filewatcher-ndximat-data-pvc"
+
+    pvc_spec = yaml.safe_load(
+        f"""
+                kind: PersistentVolumeClaim
+                apiVersion: v1
+                metadata:
+                  name: {imat_pvc_name}
+                spec:
+                  accessModes:
+                    - ReadOnlyMany
+                  resources:
+                    requests:
+                      storage: 1000Gi
+                  volumeName: {imat_pv_name}
+                  storageClassName: smb
+              """
+    )
+    pv_spec = yaml.safe_load(
+        f"""
+            apiVersion: v1
+            kind: PersistentVolume
+            metadata:
+              annotations:
+                pv.kubernetes.io/provisioned-by: smb.csi.k8s.io
+              name: {imat_pv_name}
+            spec:
+              capacity:
+                storage: 1000Gi
+              accessModes:
+                - ReadOnlyMany
+              persistentVolumeReclaimPolicy: Retain
+              storageClassName: smb
+              csi:
+                driver: smb.csi.k8s.io
+                readOnly: true
+                volumeHandle: ndximat.{namespace}.svc.cluster.local/share##imat
+                volumeAttributes:
+                  source: "//NDXIMAT.isis.cclrc.ac.uk/data\$/"
+                nodeStageSecretRef:
+                  name: imat-creds
+                  namespace: {namespace}
+          """
+    )
+    deploy_pv(pv_spec, name, children)
+    deploy_pvc(pvc_spec, name, children)
+
+    imat_volume = {
+        "name": "imat-mount",
+        "persistentVolumeClaim": {
+            "claimName": imat_pvc_name,
+            "readOnly": "true",
+        }
+    }
+    imat_volume_mount = {
+        "name": "imat-mount",
+        "mountPath": "/imat"
+    }
+    deployment_spec["spec"]["template"]["spec"]["volumeMounts"].append(imat_volume_mount)
+    deployment_spec["spec"]["template"]["volumes"].append(imat_volume)
+    return deployment_spec
+
+
+def add_special_pv(spec: Mapping[str, Any], deployment_spec: Mapping[str, Any], namespace: str, name: str, children: list[Any] | None) -> Mapping[str, Any]:
+    if "specialPV" in spec and spec["specialPV"].upper() != "NONE":
+        specialPV = spec.get("specialPV", "imat").lower()
+        match specialPV:
+            case "imat":
+                deployment_spec = setup_imat_pvcs_pvs(deployment_spec, namespace, name=name, children=children)
+            case _:
+                logger.info("Special PV is not implemented.")
+    return deployment_spec
+
+
 def generate_deployment_body(
-    spec: Mapping[str, Any], name: str
+    spec: Mapping[str, Any], name: str, children: list[Any] | None = None
 ) -> tuple[MutableMapping[str, Any], MutableMapping[str, Any], MutableMapping[str, Any]]:
     """
     Create and return a Kubernetes deployment yaml for each deployment
     :param spec: The kopf spec
     :param name: The instrument name
+    :param children: The list of children for this filewatcher
     :return: Tuple of the mutable mappings containing the deployment specs
     """
-    archive_dir = os.environ.get("ARCHIVE_DIR", "/archive")
     queue_host = os.environ.get("QUEUE_HOST", "rabbitmq-cluster.rabbitmq.svc.cluster.local")
     queue_name = os.environ.get("EGRESS_QUEUE_NAME", "watched-files")
     file_watcher_sha = os.environ.get("FILE_WATCHER_SHA256", "")
@@ -45,6 +122,7 @@ def generate_deployment_body(
     archive_pvc_name = f"filewatcher-{name}-pvc"
     archive_pv_name = f"filewatcher-{name}-pv"
     namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
+
     deployment_spec = yaml.safe_load(
         f"""
             apiVersion: apps/v1
@@ -72,8 +150,8 @@ def generate_deployment_body(
                       value: {queue_host}
                     - name: EGRESS_QUEUE_NAME
                       value: {queue_name}
-                    - name: WATCH_DIR
-                      value: {archive_dir}
+                    - name: WATCH_FILE
+                      value: {spec.get("lastrunFilePath", "/archive/NDXMARI/Instrument/logs/lastrun.txt")}
                     - name: FILE_PREFIX
                       value: {spec.get("filePrefix", "MAR")}
                     - name: INSTRUMENT_FOLDER
@@ -137,7 +215,7 @@ def generate_deployment_body(
                       periodSeconds: 10
                     volumeMounts:
                       - name: archive-mount
-                        mountPath: {archive_dir}
+                        mountPath: /archive
                   volumes:
                     - name: archive-mount
                       persistentVolumeClaim:
@@ -145,6 +223,8 @@ def generate_deployment_body(
                         readOnly: true
         """
     )
+    add_special_pv(spec=spec, deployment_spec=deployment_spec, namespace=namespace, name=name, children=children)
+
     pvc_spec = yaml.safe_load(
         f"""
             kind: PersistentVolumeClaim
@@ -209,7 +289,7 @@ def deploy_deployment(deployment_spec: Mapping[str, Any], name: str, children: l
     :param children: The operators children
     :return: None
     """
-    app_api = kubernetes.client.AppsV1Api()
+    app_api = client.AppsV1Api()
     logger.info("Starting deployment of: filewatcher-%s", name)
     namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
     depl = app_api.create_namespaced_deployment(namespace=namespace, body=deployment_spec)
@@ -217,7 +297,7 @@ def deploy_deployment(deployment_spec: Mapping[str, Any], name: str, children: l
     logger.info("Deployed: filewatcher-%s", name)
 
 
-def deploy_pvc(pvc_spec: Mapping[str, Any], name: str, children: list[Any]) -> None:
+def deploy_pvc(pvc_spec: Mapping[str, Any], name: str, children: list[Any] | None) -> None:
     """
     Given a pvc spec, name, and the operators children, create the namespaced persistent volume claim and add its uid
     to the operators children
@@ -227,7 +307,7 @@ def deploy_pvc(pvc_spec: Mapping[str, Any], name: str, children: list[Any]) -> N
     :return: None
     """
     namespace = os.environ.get("FILEWATCHER_NAMESPACE", "fia")
-    core_api = kubernetes.client.CoreV1Api()
+    core_api = client.CoreV1Api()
     # Check if PVC exists else deploy a new one:
     if pvc_spec["metadata"]["name"] not in [
         ii.metadata.name
@@ -235,11 +315,12 @@ def deploy_pvc(pvc_spec: Mapping[str, Any], name: str, children: list[Any]) -> N
     ]:
         logger.info("Starting deployment of PVC: filewatcher-%s", name)
         pvc = core_api.create_namespaced_persistent_volume_claim(namespace=namespace, body=pvc_spec)
-        children.append(pvc.metadata.uid)
+        if children is not None:
+            children.append(pvc.metadata.uid)
         logger.info("Deployed PVC: filewatcher-%s", name)
 
 
-def deploy_pv(pv_spec: Mapping[str, Any], name: str, children: list[Any]) -> None:
+def deploy_pv(pv_spec: Mapping[str, Any], name: str, children: list[Any] | None) -> None:
     """
     Given a pvc spec, name, and the operators children, create the namespaced persistent volume and add its uid
     to the operators children
@@ -248,12 +329,13 @@ def deploy_pv(pv_spec: Mapping[str, Any], name: str, children: list[Any]) -> Non
     :param children: The operators children
     :return: None
     """
-    core_api = kubernetes.client.CoreV1Api()
+    core_api = client.CoreV1Api()
     # Check if PV exists else deploy a new one
     if pv_spec["metadata"]["name"] not in [ii.metadata.name for ii in core_api.list_persistent_volume().items]:
         logger.info("Starting deployment of PV: filewatcher-%s", name)
         pv = core_api.create_persistent_volume(body=pv_spec)
-        children.append(pv.metadata.uid)
+        if children is not None:
+            children.append(pv.metadata.uid)
         logger.info("Deployed PV: filewatcher-%s", name)
 
 
@@ -268,13 +350,13 @@ def create_fn(spec: Any, **kwargs: Any) -> dict[str, list[Any]]:
     """
     name = kwargs["body"]["metadata"]["name"]
     logger.info("Name is filewatcher-%s", name)
+    children: list[Any] = []
 
-    deployment_spec, pvc_spec, pv_spec = generate_deployment_body(spec, name)
+    deployment_spec, pvc_spec, pv_spec = generate_deployment_body(spec, name, children)
     # Make the deployment the child of this operator
     kopf.adopt(deployment_spec)
     kopf.adopt(pvc_spec)
 
-    children: list[Any] = []
     deploy_pv(pv_spec, name, children)
     deploy_pvc(pvc_spec, name, children)
     deploy_deployment(deployment_spec, name, children)
@@ -291,8 +373,7 @@ def delete_func(**kwargs: Any) -> None:
     :return: None
     """
     name = kwargs["body"]["metadata"]["name"]
-    client = kubernetes.client.CoreV1Api()
-    client.delete_persistent_volume(name=f"filewatcher-{name}-pv")
+    client.CoreV1Api().delete_persistent_volume(name=f"filewatcher-{name}-pv")
 
 
 @kopf.on.update("fia.com", "v1", "filewatchers")
@@ -304,10 +385,9 @@ def update_func(spec: Any, **kwargs: Any) -> None:
     :return: None
     """
     name = kwargs["body"]["metadata"]["name"]
-
     namespace = kwargs["body"]["metadata"]["namespace"]
     deployment_spec, _, __ = generate_deployment_body(spec, name)
-    app_api = kubernetes.client.AppsV1Api()
+    app_api = client.AppsV1Api()
 
     app_api.patch_namespaced_deployment(
         name=f"filewatcher-{name}-deployment", namespace=namespace, body=deployment_spec

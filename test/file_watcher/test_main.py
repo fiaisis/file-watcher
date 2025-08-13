@@ -20,7 +20,7 @@ class MainTest(unittest.TestCase):
         assert config.username == "guest"
         assert config.password == "guest"  # noqa: S105
         assert config.queue_name == "watched-files"
-        assert config.watch_dir == Path("/archive")
+        assert config.watch_file == Path("/archive")
         assert config.run_file_prefix == "MAR"
         assert config.instrument_folder == "NDXMARI"
         assert config.db_ip == "localhost"
@@ -55,7 +55,7 @@ class MainTest(unittest.TestCase):
         assert config.host == host
         assert config.username == username
         assert config.password == password
-        assert config.watch_dir == Path(watch_dir)
+        assert config.watch_file == Path(watch_dir)
         assert config.run_file_prefix == run_file_prefix
         assert config.instrument_folder == instrument_folder
         assert config.db_ip == db_ip
