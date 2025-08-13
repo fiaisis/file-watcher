@@ -10,7 +10,7 @@ from file_watcher.main import FileWatcher, load_config, main
 from test.file_watcher.utils import AwaitableNonAsyncMagicMock
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def config():
     return load_config()
 
@@ -23,6 +23,20 @@ def file_watcher(config):
 # def _event_occurred(path_to_add: Union[Path, None]) -> None:
 #   if path_to_add is not None:
 #      self.on_event(path_to_add)
+
+
+@pytest.fixture
+def clear_environment():
+    yield
+    del os.environ["QUEUE_HOST"]
+    del os.environ["QUEUE_USER"]
+    del os.environ["QUEUE_PASSWORD"]
+    del os.environ["EGRESS_QUEUE_NAME"]
+    del os.environ["WATCH_DIR"]
+    del os.environ["FILE_PREFIX"]
+    del os.environ["INSTRUMENT_FOLDER"]
+    del os.environ["FIA_API_URL"]
+    del os.environ["FIA_API_API_KEY"]
 
 
 def test_load_config_defaults(config):
@@ -39,7 +53,7 @@ def test_load_config_defaults(config):
     assert config.fia_api_api_key == "shh"
 
 
-def test_load_config_environ_vars(config):
+def test_load_config_environ_vars(config, clear_environment):
     host = str(mock.MagicMock())
     username = str(mock.MagicMock())
     password = str(mock.MagicMock())
@@ -82,6 +96,7 @@ def test_file_watcher_on_event_produces_message(mock_producer, file_watcher):
         path = Path(fp.name)
 
     file_watcher.on_event(path)
+
     mock_producer.return_value.__enter__.return_value.basic_publish.assert_called_once_with(
         "watched-files", "", str(path).encode()
     )
@@ -132,26 +147,34 @@ def test_file_watcher_start_watching_creates_last_run_detector(mock_create_last_
     with mock.patch("file_watcher.main.write_readiness_probe_file") as write_readiness_probe_file_mock:
         file_watcher.start_watching()
 
+    mock_create_last_run_detector.return_value.watch_for_new_runs = mock.AsyncMock()
+
     mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(
         callback_func=write_readiness_probe_file_mock
     )
 
 
+# New one, an attempt anyway
 @patch("file_watcher.main.create_last_run_detector")
-@patch("file_watcher.main.write_readiness_probe_file")
+# @patch("file_watcher.main.write_readiness_probe_file")
 def test_file_watcher_start_watching_creates_last_run_detector(mock_create_last_run_detector, file_watcher, config):
-    # This test needs a rename and write a test that actually does create LRD when start_watching() is called
-
-    file_watcher.start_watching()
+    # This test needs a rename and to write a test that actually does create LRD when start_watching() is called
+    with mock.patch("file_watcher.main.write_readiness_probe_file") as write_readiness_probe_file_mock:
+        write_readiness_probe_file_mock.side_effect = ()
+        file_watcher.start_watching()
 
     mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(
-        config.watch_dir,
-        config.instrument_folder,
-        callable(),
-        run_file_prefix=config.run_file_prefix,
-        fia_api_url=config.fia_api_url,
-        fia_api_api_key=config.fia_api_api_key,
+        callback_func=write_readiness_probe_file_mock
     )
+
+    # mock_create_last_run_detector.return_value.watch_for_new_runs.assert_called_once_with(
+    #   config.watch_dir,
+    #  config.instrument_folder,
+    # callback_func=write_readiness_probe_file_mock,
+    # run_file_prefix=config.run_file_prefix,
+    # fia_api_url=config.fia_api_url,
+    # fia_api_api_key=config.fia_api_api_key,
+    # )
 
 
 @patch("file_watcher.main.load_config")
