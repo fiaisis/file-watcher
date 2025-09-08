@@ -119,7 +119,7 @@ class LastRunDetector:
         :return: Return the latest run for the instrument that is set on this objector or None if unsuccessful
         """
         # Use request library to FIA API
-        instrument_name = instrument
+        instrument_name = instrument if not instrument.startswith("NDX".lower()) else instrument[3:]
         try:
             request = self.retry_api_request(
                 url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run", method="GET"
