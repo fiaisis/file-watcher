@@ -111,7 +111,7 @@ def generate_deployment_body(
                           else
                             exit 1
                           fi
-                      initialDelaySeconds: 600
+                      initialDelaySeconds: 30
                       periodSeconds: 10
                     livenessProbe:
                       exec:
@@ -127,7 +127,7 @@ def generate_deployment_body(
                           else
                             exit 1
                           fi
-                      initialDelaySeconds: 600
+                      initialDelaySeconds: 30
                       failureThreshold: 3
                       periodSeconds: 10
                     volumeMounts:

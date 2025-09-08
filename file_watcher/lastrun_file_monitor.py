@@ -14,7 +14,6 @@ from typing import Any, Callable, Literal, Union, cast
 
 import requests
 from requests import HTTPError
-from requests.auth import HTTPBasicAuth
 
 from file_watcher.utils import logger
 
@@ -96,10 +95,13 @@ class LastRunDetector:
         :return: a requests.Response object for handling
         """
         attempts = 0
-        auth = HTTPBasicAuth("apikey", self.fia_api_api_key)
         while attempts < retry_attempts:
             req = requests.request(
-                method=method, url=url_request_string, timeout=self.request_timeout_length, auth=auth, json=body
+                method=method,
+                url=url_request_string,
+                timeout=self.request_timeout_length,
+                headers={"Authorization": f"Bearer {self.fia_api_api_key}"},
+                json=body,
             )
             attempts += 1
             if req.status_code == HTTPStatus.OK:
@@ -118,11 +120,10 @@ class LastRunDetector:
         :param instrument: name of instrument
         :return: Return the latest run for the instrument that is set on this objector or None if unsuccessful
         """
-        # Use request library to FIA API
-        instrument_name = instrument if not instrument.startswith("NDX".lower()) else instrument[3:]
+        instrument_name = instrument if not instrument.startswith("NDX".upper()) else instrument[3:]
         try:
             request = self.retry_api_request(
-                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run", method="GET"
+                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest-run", method="GET"
             )
 
             request.raise_for_status()
@@ -142,7 +143,7 @@ class LastRunDetector:
         instrument_name = self.instrument[3:]
         try:
             request = self.retry_api_request(
-                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run",
+                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest-run",
                 method="PUT",
                 body={"latest_run": run_number},
             )

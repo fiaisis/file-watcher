@@ -8,6 +8,7 @@ import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any, Union
 
@@ -60,8 +61,8 @@ def write_readiness_probe_file(fia_api_url: str) -> None:
     :return: None
     """
     # Checking communication with FIA API before writing heartbeat
-    req = requests.get(f"{fia_api_url}/healthz", timeout=1)
-    if req.text == "ok":
+    req = requests.get(f"{fia_api_url}/healthz", timeout=5)
+    if req.status_code == HTTPStatus.OK:
         path = Path("/tmp/heartbeat")  # noqa: S108
         with path.open("w", encoding="utf-8") as file:
             file.write(time.strftime("%Y-%m-%d %H:%M:%S"))
