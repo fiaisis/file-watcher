@@ -14,7 +14,6 @@ from typing import Any, Callable, Literal, Union, cast
 
 import requests
 from requests import HTTPError
-from requests.auth import HTTPBasicAuth
 
 from file_watcher.utils import logger
 
@@ -96,10 +95,13 @@ class LastRunDetector:
         :return: a requests.Response object for handling
         """
         attempts = 0
-        auth = HTTPBasicAuth("apikey", self.fia_api_api_key)
         while attempts < retry_attempts:
             req = requests.request(
-                method=method, url=url_request_string, timeout=self.request_timeout_length, auth=auth, json=body
+                method=method,
+                url=url_request_string,
+                timeout=self.request_timeout_length,
+                headers={"Authorization": f"Bearer {self.fia_api_api_key}"},
+                json=body,
             )
             attempts += 1
             if req.status_code == HTTPStatus.OK:
