@@ -306,7 +306,7 @@ class TestLastRunFileMonitor:
         self.lrd.update_latest_run_to_fia_api(run_number)
 
         self.lrd.retry_api_request.assert_called_once_with(
-            url_request_string=f"{self.fia_api_url}/instrument/MARI/latest_run",
+            url_request_string=f"{self.fia_api_url}/instrument/MARI/latest-run",
             method="PUT",
             body={"latest_run": run_number},
         )
