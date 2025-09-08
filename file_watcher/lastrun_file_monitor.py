@@ -121,7 +121,7 @@ class LastRunDetector:
         instrument_name = instrument if not instrument.startswith("NDX".upper()) else instrument[3:]
         try:
             request = self.retry_api_request(
-                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run", method="GET"
+                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest-run", method="GET"
             )
 
             request.raise_for_status()
@@ -141,7 +141,7 @@ class LastRunDetector:
         instrument_name = self.instrument[3:]
         try:
             request = self.retry_api_request(
-                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest_run",
+                url_request_string=f"{self.fia_api_url}/instrument/{instrument_name}/latest-run",
                 method="PUT",
                 body={"latest_run": run_number},
             )
