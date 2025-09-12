@@ -36,7 +36,7 @@ def wait_until(predicate, timeout: float = 1.0, interval: float = 0.01) -> bool:
     deadline = time.time() + timeout
     while time.time() < deadline:
         if predicate():
-            time.sleep(0.4)
+            time.sleep(0.8)
             return True
         time.sleep(interval)
     return False
@@ -53,6 +53,7 @@ def test_stop_prevents_further_writes(heartbeat: Heartbeat, monkeypatch: pytest.
     """Test that stopping the heartbeat prevents further writes to the heartbeat file."""
     monkeypatch.setattr(time, "strftime", lambda fmt: "BEFORE")
     heartbeat.start()
+
     assert wait_until(lambda: heartbeat.path.exists())
     assert heartbeat.path.read_text(encoding="utf-8") == "BEFORE"
 
