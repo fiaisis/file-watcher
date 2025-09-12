@@ -149,7 +149,7 @@ class LastRunDetector:
             )
 
             request.raise_for_status()
-            return f"Latest run update: run number {run_number}"
+            return f"Latest run updated in DB via API: {run_number}"
 
         except HTTPError as e:
             logger.warning("Failed to update latest run: ", exc_info=e)
@@ -230,7 +230,7 @@ class LastRunDetector:
                 logger.exception(exception)
                 return
         self.callback(run_path)
-        self.update_latest_run_to_fia_api(run_number)
+        logger.info(self.update_latest_run_to_fia_api(run_number))
         self.last_recorded_run_from_file = run_number
 
     def get_last_run_from_file(self) -> str:
@@ -269,12 +269,16 @@ class LastRunDetector:
 
             try:
                 # Generate run_path which checks that path is genuine and exists
+                logger.info(f"Looking for run {actual_run_number}")
                 run_path = self.generate_run_path(actual_run_number)
+                logger.info("Run found: " + str(run_path))
                 self.new_run_detected(actual_run_number, run_path=run_path)
             except FileNotFoundError as exception:
+                logger.info(f"Couldn't find run {actual_run_number}, looking for {actual_run_number_1_less_zero}")
                 try:
                     if actual_run_number_1_less_zero != actual_run_number:
                         alt_run_path = self.generate_run_path(actual_run_number_1_less_zero)
+                        logger.info("Run found: " + str(alt_run_path))
                         self.new_run_detected(actual_run_number_1_less_zero, run_path=alt_run_path)
                     else:
                         raise FileNotFoundError(

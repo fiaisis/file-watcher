@@ -121,7 +121,7 @@ class TestLastRunFileMonitor:
         self.lrd.retry_api_request.return_value.json.return_value = {"latest_run": 234}
 
         return_string = self.lrd.update_latest_run_to_fia_api("234")
-        assert return_string == "Latest run update: run number 234"
+        assert return_string == "Latest run updated in DB via API: 234"
 
     def test_put_latest_run_to_fia_raises_exception_on_bad_status_code(self):
         self.lrd.retry_api_request = MagicMock()

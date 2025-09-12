@@ -110,6 +110,7 @@ class FileWatcher:
             logger.info("Skipping directory creation for %s", str_path)
             return
         with self.producer_channel() as channel:
+            logger.info("Submitting found files to queue: " + str(path))
             channel.basic_publish(self.config.queue_name, "", str(path).encode())
 
     def start_watching(self) -> None:
