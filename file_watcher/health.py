@@ -65,9 +65,7 @@ class Heartbeat:
             try:
                 req = requests.get(f"{self._api_url}/healthz", timeout=5)
                 if req.status_code == HTTPStatus.OK:
-                    path = Path("/tmp/heartbeat")  # noqa: S108
-                    with path.open("w", encoding="utf-8") as file:
-                        file.write(time.strftime("%Y-%m-%d %H:%M:%S"))
+                    self.path.write_text(time.strftime("%Y-%m-%d %H:%M:%S"), encoding="utf-8")
             except Exception:
                 # Keep heartbeat resilient; don't crash on transient FS issues.
                 logger.debug("Heartbeat write failed", exc_info=True)

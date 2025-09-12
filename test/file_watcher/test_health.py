@@ -6,6 +6,7 @@ import contextlib
 import logging
 import time
 from typing import TYPE_CHECKING, Any
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -49,8 +50,10 @@ def test_thread_properties_before_start(heartbeat: Heartbeat) -> None:
     assert not heartbeat._thread.is_alive()
 
 
-def test_stop_prevents_further_writes(heartbeat: Heartbeat, monkeypatch: pytest.MonkeyPatch) -> None:
+@patch("file_watcher.health.requests.get")
+def test_stop_prevents_further_writes(mock_get: Mock, heartbeat: Heartbeat, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that stopping the heartbeat prevents further writes to the heartbeat file."""
+    mock_get.return_value.status_code = 200
     monkeypatch.setattr(time, "strftime", lambda fmt: "BEFORE")
     heartbeat.start()
 
