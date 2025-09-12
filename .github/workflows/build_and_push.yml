@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -28,7 +28,7 @@ jobs:
           password: ${{ secrets.WRITE_PACKAGE_TOKEN }}
 
       - name: Checkout the Gitops repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: fiaisis/gitops
           token: ${{ secrets.GITOPS_STAGING_EDIT_TOKEN }}
@@ -49,7 +49,7 @@ jobs:
           echo "::set-output name=digest::$FILTERED_DIGEST"
 
       - name: Edit the YAML file-watcher-operator.yml file for staging for file watcher
-        uses: mikefarah/yq@v4.47.1
+        uses: mikefarah/yq@v4.47.2
         with:
           cmd: yq e -i '.spec.template.spec.containers[] |= (select(.name == "file-watcher-operator") | .env[] |= select(.name == "FILE_WATCHER_SHA256").value = "${{ steps.remove_sha256_watcher.outputs.digest }}")' './components/file-watcher-operator/envs/staging/file-watcher-operator.yml'
 
@@ -62,7 +62,7 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/filewatcher-operator:${{ github.sha }}
 
       - name: Edit the YAML file-watcher-operator.yml file for staging for file watcher operator
-        uses: mikefarah/yq@v4.47.1
+        uses: mikefarah/yq@v4.47.2
         with:
           cmd: yq e -i '.spec.template.spec.containers[] |= select(.name == "file-watcher-operator").image = "ghcr.io/fiaisis/filewatcher-operator@${{ steps.file_watcher_operator_build.outputs.digest }}"' './components/file-watcher-operator/envs/staging/file-watcher-operator.yml'
 
