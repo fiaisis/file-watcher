@@ -16,6 +16,7 @@ import requests
 from pika import BlockingConnection, ConnectionParameters, PlainCredentials  # type: ignore
 from pika.adapters.blocking_connection import BlockingChannel  # type: ignore
 
+from file_watcher.health import Heartbeat
 from file_watcher.lastrun_file_monitor import create_last_run_detector
 from file_watcher.utils import logger
 
@@ -118,7 +119,6 @@ class FileWatcher:
         Start the PollingObserver with the queue based event handler and the given queue
         :return: None
         """
-        write_readiness_probe_file(self.config.fia_api_url)
 
         def _event_occurred(path_to_add: Union[Path, None]) -> None:
             if path_to_add is not None:
@@ -145,8 +145,13 @@ class FileWatcher:
 def main() -> None:
     """Main function Create the file watcher and start watching for changes"""
     config = load_config()
-    file_watcher = FileWatcher(config)
-    file_watcher.start_watching()
+    hb = Heartbeat(api_url=config.fia_api_url)
+    hb.start()
+    try:
+        file_watcher = FileWatcher(config)
+        file_watcher.start_watching()
+    finally:
+        hb.stop()
 
 
 if __name__ == "__main__":
