@@ -66,8 +66,10 @@ class Heartbeat:
                 req = requests.get(f"{self._api_url}/healthz", timeout=5)
                 if req.status_code == HTTPStatus.OK:
                     self.path.write_text(time.strftime("%Y-%m-%d %H:%M:%S"), encoding="utf-8")
+
             except Exception:
                 # Keep heartbeat resilient; don't crash on transient FS issues.
                 logger.debug("Heartbeat write failed", exc_info=True)
-            # Use wait() so we can exit promptly
+            finally:
+                time.sleep(self.interval)
             self._stop.wait(self.interval)
