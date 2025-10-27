@@ -21,7 +21,7 @@ operator = [
 ]
 
 formatting = [
-    "ruff==0.13.3"
+    "ruff==0.14.2"
 ]
 
 test = [
