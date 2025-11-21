@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
         with:
           token: ${{ secrets.WRITE_PACKAGE_TOKEN }}
 
@@ -30,7 +30,7 @@ jobs:
           password: ${{ secrets.WRITE_PACKAGE_TOKEN }}
 
       - name: Checkout the Gitops repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.0
         with:
           repository: fiaisis/gitops
           token: ${{ secrets.GITOPS_STAGING_EDIT_TOKEN }}
