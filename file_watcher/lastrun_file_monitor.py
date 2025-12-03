@@ -40,7 +40,9 @@ class LastRunDetector:
         self.run_file_prefix = run_file_prefix
         self.callback = callback
         self.last_run_file = last_run_file
-        self.instrument_data_path = last_run_file.parent.parent.joinpath("data")
+        # If just root /data, assume we are in an instrument computer's data path already and use the parent of the watch file
+        self.instrument_pc = last_run_file.parent.parent == Path("/")
+        self.instrument_data_path = last_run_file.parent.parent.joinpath("data") if not self.instrument_pc else self.last_run_file.parent
         self.last_recorded_run_from_file = self.get_last_run_from_file()
         self.request_timeout_length = request_timeout_length
         logger.info(
@@ -49,7 +51,8 @@ class LastRunDetector:
             self.last_recorded_run_from_file,
         )
         self.last_cycle_folder_check = datetime.datetime.now(datetime.UTC)
-        self.latest_cycle = self.get_latest_cycle()
+        if not self.instrument_pc:
+            self.latest_cycle = self.get_latest_cycle()
 
         # FIA API get last run setup and checks if runs missed then recovery
         try:
@@ -166,7 +169,8 @@ class LastRunDetector:
         while run:
             if run_once:
                 run = False
-            self._check_for_new_cycle_folder()
+            if not self.instrument_pc:
+                self._check_for_new_cycle_folder()
             callback_func()
             try:
                 run_in_file = self.get_last_run_from_file()
@@ -194,7 +198,8 @@ class LastRunDetector:
         time_between_cycle_folder_checks = current_time - self.last_cycle_folder_check
         # If it's been 6 hours do another check for the latest folder
         if time_between_cycle_folder_checks.total_seconds() > 21600:  # noqa: PLR2004
-            self.latest_cycle = self.get_latest_cycle()
+            if not self.instrument_pc:
+                self.latest_cycle = self.get_latest_cycle()
             self.last_cycle_folder_check = current_time
 
     def generate_run_path(self, run_number: str) -> Path:
@@ -204,13 +209,17 @@ class LastRunDetector:
         :param run_number: The run number to generate and check for
         :return: The path to the file for the run number
         """
-        path = (self.instrument_data_path.joinpath(self.latest_cycle)
-                .joinpath(self.run_file_prefix + run_number + ".nxs"))
+        if not self.instrument_pc:
+            path = self.instrument_data_path.joinpath(self.latest_cycle).joinpath(self.run_file_prefix + run_number + ".nxs")
+        else:
+            path = self.instrument_data_path.joinpath(self.run_file_prefix + run_number + ".nxs")
         if not path.exists():
+            logger.info("Path does not exist: %s", path)
             try:
                 path = self.find_file_in_instruments_data_folder(run_number)
             except Exception as exc:
                 raise FileNotFoundError(f"This run number doesn't have a file: {run_number}") from exc
+        logger.info("Path does exist: %s", path)
         return path
 
     def new_run_detected(self, run_number: str, run_path: Union[Path, None] = None) -> None:
