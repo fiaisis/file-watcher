@@ -18,6 +18,7 @@ from requests import HTTPError
 from file_watcher.utils import logger
 
 
+
 class LastRunDetector:
     """
     The last run detector is a class to detect when a new run has occured and callback, then recover lost runs that
@@ -41,7 +42,7 @@ class LastRunDetector:
         self.callback = callback
         self.last_run_file = last_run_file
         # If just root /data, assume we are in an instrument computer's data path already and use the parent of the watch file
-        self.instrument_pc = last_run_file.parent.parent == Path("/")
+        self.instrument_pc = self._is_a_instrument_pc()
         self.instrument_data_path = last_run_file.parent.parent.joinpath("data") if not self.instrument_pc else self.last_run_file.parent
         self.last_recorded_run_from_file = self.get_last_run_from_file()
         self.request_timeout_length = request_timeout_length
@@ -81,6 +82,9 @@ class LastRunDetector:
             )
             self.recover_lost_runs(self.latest_known_run_from_fia, self.last_recorded_run_from_file)
             self.latest_known_run_from_fia = self.last_recorded_run_from_file
+
+    def _is_a_instrument_pc(self):
+        return self.last_run_file.parent.parent == Path("/")
 
     def retry_api_request(
         self,
@@ -216,7 +220,7 @@ class LastRunDetector:
         if not path.exists():
             logger.info("Path does not exist: %s", path)
             try:
-                path = self.find_file_in_instruments_data_folder(run_number)
+                path = self._find_file_in_instruments_data_folder(run_number)
             except Exception as exc:
                 raise FileNotFoundError(f"This run number doesn't have a file: {run_number}") from exc
         logger.info("Path does exist: %s", path)
@@ -294,7 +298,7 @@ class LastRunDetector:
                 except FileNotFoundError as exception_:
                     logger.exception(exception_)
 
-    def find_file_in_instruments_data_folder(self, run_number: str) -> Path:
+    def _find_file_in_instruments_data_folder(self, run_number: str) -> Path:
         """
         Slow but guaranteed to find the file if it exists.
         :param run_number: The run number you need to go and find
@@ -318,7 +322,7 @@ class LastRunDetector:
 
 
 def create_last_run_detector(
-    archive_path: Path,
+    last_run_file: Path,
     instrument: str,
     callback: Callable[[Path | None], None],
     run_file_prefix: str,
@@ -337,7 +341,7 @@ def create_last_run_detector(
     :return:
     """
     return LastRunDetector(
-        archive_path,
+        last_run_file,
         instrument,
         callback,
         run_file_prefix,
