@@ -5,36 +5,34 @@ Filewatcher operator controls the deployments, PVs, and PVCs based on instrument
 import logging
 import os
 import sys
-from collections.abc import Mapping, MutableMapping
-from kubernetes import client
-from kubernetes.client import (
-    V1Deployment,
-    V1DeploymentSpec,
-    V1ObjectMeta,
-    V1PodTemplateSpec,
-    V1PodSpec,
-    V1Container,
-    V1EnvVar,
-    V1EnvVarSource,
-    V1SecretKeySelector,
-    V1Probe,
-    V1ExecAction,
-    V1VolumeMount,
-    V1Volume,
-    V1PersistentVolumeClaimVolumeSource,
-    V1LabelSelector,
-    V1PersistentVolume,
-    V1PersistentVolumeSpec,
-    V1CSIPersistentVolumeSource,
-    V1PersistentVolumeClaim,
-    V1PersistentVolumeClaimSpec,
-    V1ResourceRequirements,
-)
+from collections.abc import Mapping
 from typing import Any
 
 import kopf
-import kubernetes  # type: ignore
-import yaml
+from kubernetes import client
+from kubernetes.client import (
+    V1Container,
+    V1CSIPersistentVolumeSource,
+    V1Deployment,
+    V1DeploymentSpec,
+    V1EnvVar,
+    V1EnvVarSource,
+    V1ExecAction,
+    V1LabelSelector,
+    V1ObjectMeta,
+    V1PersistentVolume,
+    V1PersistentVolumeClaim,
+    V1PersistentVolumeClaimSpec,
+    V1PersistentVolumeClaimVolumeSource,
+    V1PersistentVolumeSpec,
+    V1PodSpec,
+    V1PodTemplateSpec,
+    V1Probe,
+    V1ResourceRequirements,
+    V1SecretKeySelector,
+    V1Volume,
+    V1VolumeMount,
+)
 
 
 class EndpointFilter(logging.Filter):
@@ -62,16 +60,16 @@ def build_smb_pvc(pvc_name: str, namespace: str, pv_name: str) -> V1PersistentVo
         ),
         spec=V1PersistentVolumeClaimSpec(
             access_modes=["ReadOnlyMany"],
-            resources=V1ResourceRequirements(
-                requests={"storage": "1000Gi"}
-            ),
+            resources=V1ResourceRequirements(requests={"storage": "1000Gi"}),
             volume_name=pv_name,
             storage_class_name="smb",
         ),
     )
 
 
-def build_smb_pv(pv_name: str, namespace: str, host: str, creds_name: str, mount_options: None | list[str] = None) -> V1PersistentVolume:
+def build_smb_pv(
+    pv_name: str, namespace: str, host: str, creds_name: str, mount_options: None | list[str] = None
+) -> V1PersistentVolume:
     if mount_options is None:
         mount_options = []
     return V1PersistentVolume(
@@ -117,17 +115,11 @@ def setup_archive_pvcs_pvs(namespace: str, name: str) -> tuple[V1PersistentVolum
     archive_pv_name = f"filewatcher-{name}-pv"
     archive_pvc_name = f"filewatcher-{name}-pvc"
 
-    mount_options = [
-        "noserverino",
-        "_netdev",
-        "vers=2.1",
-        "uid=1001",
-        "gid=1001",
-        "dir_mode=0555",
-        "file_mode=0444"
-    ]
+    mount_options = ["noserverino", "_netdev", "vers=2.1", "uid=1001", "gid=1001", "dir_mode=0555", "file_mode=0444"]
 
-    archive_pv = build_smb_pv(archive_pv_name, namespace, "//isisdatar55.isis.cclrc.ac.uk/inst$/", "archive-creds", mount_options)
+    archive_pv = build_smb_pv(
+        archive_pv_name, namespace, "//isisdatar55.isis.cclrc.ac.uk/inst$/", "archive-creds", mount_options
+    )
     archive_pvc = build_smb_pvc(archive_pvc_name, namespace, archive_pv_name)
 
     return archive_pv, archive_pvc
@@ -145,7 +137,9 @@ def define_mounts(claim_name: str, mount_name: str, mount_path: str) -> tuple[V1
     return volume_mount, volume
 
 
-def build_deployment(spec: Mapping[str, Any], name: str) -> tuple[V1Deployment, V1PersistentVolume, V1PersistentVolumeClaim]:
+def build_deployment(
+    spec: Mapping[str, Any], name: str
+) -> tuple[V1Deployment, V1PersistentVolume, V1PersistentVolumeClaim]:
     """
     Create and return a Kubernetes deployment yaml for each deployment
     :param spec: The kopf spec
@@ -164,13 +158,19 @@ def build_deployment(spec: Mapping[str, Any], name: str) -> tuple[V1Deployment, 
         match special_pv:
             case "imat":
                 watch_pv, watch_pvc = setup_imat_pvcs_pvs(namespace)
-                volume_mount, volume = define_mounts(claim_name=watch_pvc.metadata.name, mount_name="imat-mount", mount_path="/imat")
+                volume_mount, volume = define_mounts(
+                    claim_name=watch_pvc.metadata.name, mount_name="imat-mount", mount_path="/imat"
+                )
             case _:
                 watch_pv, watch_pvc = setup_archive_pvcs_pvs(namespace, name=name)
-                volume_mount, volume = define_mounts(claim_name=watch_pvc.metadata.name, mount_name="archive-mount", mount_path="/archive")
+                volume_mount, volume = define_mounts(
+                    claim_name=watch_pvc.metadata.name, mount_name="archive-mount", mount_path="/archive"
+                )
     else:
         watch_pv, watch_pvc = setup_archive_pvcs_pvs(namespace, name=name)
-        volume_mount, volume = define_mounts(claim_name=watch_pvc.metadata.name, mount_name="archive-mount", mount_path="/archive")
+        volume_mount, volume = define_mounts(
+            claim_name=watch_pvc.metadata.name, mount_name="archive-mount", mount_path="/archive"
+        )
 
     env = [
         V1EnvVar(name="QUEUE_HOST", value=queue_host),
@@ -179,7 +179,6 @@ def build_deployment(spec: Mapping[str, Any], name: str) -> tuple[V1Deployment, 
         V1EnvVar(name="FILE_PREFIX", value=spec.get("filePrefix", "MAR")),
         V1EnvVar(name="INSTRUMENT_FOLDER", value=spec.get("instrumentFolder", "NDXMAR")),
         V1EnvVar(name="FIA_API_URL", value=fia_api_url),
-
         V1EnvVar(
             name="QUEUE_USER",
             value_from=V1EnvVarSource(
@@ -248,17 +247,13 @@ def build_deployment(spec: Mapping[str, Any], name: str) -> tuple[V1Deployment, 
     )
 
     template = V1PodTemplateSpec(
-        metadata=V1ObjectMeta(
-            labels={"app": f"filewatcher-{name}"}
-        ),
+        metadata=V1ObjectMeta(labels={"app": f"filewatcher-{name}"}),
         spec=pod_spec,
     )
 
     deployment_spec = V1DeploymentSpec(
         replicas=1,
-        selector=V1LabelSelector(
-            match_labels={"app": f"filewatcher-{name}"}
-        ),
+        selector=V1LabelSelector(match_labels={"app": f"filewatcher-{name}"}),
         template=template,
     )
 
@@ -306,8 +301,7 @@ def deploy_pvc(pvc_spec: V1PersistentVolumeClaim, name: str, children: list[Any]
     core_api = client.CoreV1Api()
     # Check if PVC exists else deploy a new one:
     if pvc_spec.metadata.name not in [
-        ii.metadata.name
-        for ii in core_api.list_namespaced_persistent_volume_claim(pvc_spec.metadata.namespace).items
+        ii.metadata.name for ii in core_api.list_namespaced_persistent_volume_claim(pvc_spec.metadata.namespace).items
     ]:
         logger.info("Starting deployment of PVC: filewatcher-%s", name)
         pvc = core_api.create_namespaced_persistent_volume_claim(namespace=namespace, body=pvc_spec)
@@ -380,7 +374,6 @@ def delete_func(**kwargs: Any) -> None:
         client.CoreV1Api().delete_persistent_volume(name=default_pv)
     else:
         logger.info("PV for %s could not be found", name)
-
 
 
 @kopf.on.update("fia.com", "v1", "filewatchers")

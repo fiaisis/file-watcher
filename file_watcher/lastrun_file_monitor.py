@@ -18,7 +18,6 @@ from requests import HTTPError
 from file_watcher.utils import logger
 
 
-
 class LastRunDetector:
     """
     The last run detector is a class to detect when a new run has occured and callback, then recover lost runs that
@@ -44,7 +43,9 @@ class LastRunDetector:
         # If just root /data, assume we are in an instrument computer's data path already and use the parent of the
         # watch file
         self.instrument_pc = self._is_a_instrument_pc()
-        self.instrument_data_path = last_run_file.parent.parent.joinpath("data") if not self.instrument_pc else self.last_run_file.parent
+        self.instrument_data_path = (
+            last_run_file.parent.parent.joinpath("data") if not self.instrument_pc else self.last_run_file.parent
+        )
         self.last_recorded_run_from_file = self.get_last_run_from_file()
         self.request_timeout_length = request_timeout_length
         logger.info(
@@ -215,7 +216,9 @@ class LastRunDetector:
         :return: The path to the file for the run number
         """
         if not self.instrument_pc:
-            path = self.instrument_data_path.joinpath(self.latest_cycle).joinpath(self.run_file_prefix + run_number + ".nxs")
+            path = self.instrument_data_path.joinpath(self.latest_cycle).joinpath(
+                self.run_file_prefix + run_number + ".nxs"
+            )
         else:
             path = self.instrument_data_path.joinpath(self.run_file_prefix + run_number + ".nxs")
         if not path.exists():
