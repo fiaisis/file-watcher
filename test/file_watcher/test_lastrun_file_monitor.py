@@ -331,5 +331,8 @@ class TestLastRunFileMonitor:
             assert latest_cycle == "cycle_25_2"
 
     def test_instrument_pc_check(self):
-        # Default to false, testing true in a tmp directory is extremely difficult.
-        assert not self.lrd.instrument_pc
+        assert not self.lrd.is_an_instrument_pc
+
+        self.lrd.last_run_file = Path("/imat/lastrun.txt")
+
+        assert self.lrd.is_an_instrument_pc

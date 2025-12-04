@@ -40,11 +40,10 @@ class LastRunDetector:
         self.run_file_prefix = run_file_prefix
         self.callback = callback
         self.last_run_file = last_run_file
-        # If just root /data, assume we are in an instrument computer's data path already and use the parent of the
-        # watch file
-        self.instrument_pc = self._is_a_instrument_pc()
+        # If instrument pc is true, assume a path is similar to /imat/lastrun.txt, if not assume we are using the
+        # archive, and the path looks something like /archive/NDXIMAT/logs/lastrun.txt
         self.instrument_data_path = (
-            last_run_file.parent.parent.joinpath("data") if not self.instrument_pc else self.last_run_file.parent
+            last_run_file.parent.parent.joinpath("data") if not self.is_an_instrument_pc else self.last_run_file.parent
         )
         self.last_recorded_run_from_file = self.get_last_run_from_file()
         self.request_timeout_length = request_timeout_length
@@ -54,7 +53,7 @@ class LastRunDetector:
             self.last_recorded_run_from_file,
         )
         self.last_cycle_folder_check = datetime.datetime.now(datetime.UTC)
-        if not self.instrument_pc:
+        if not self.is_an_instrument_pc:
             self.latest_cycle = self.get_latest_cycle()
 
         # FIA API get last run setup and checks if runs missed then recovery
@@ -85,7 +84,10 @@ class LastRunDetector:
             self.recover_lost_runs(self.latest_known_run_from_fia, self.last_recorded_run_from_file)
             self.latest_known_run_from_fia = self.last_recorded_run_from_file
 
-    def _is_a_instrument_pc(self) -> bool:
+    @property
+    def is_an_instrument_pc(self) -> bool:
+        # If just root /data, assume we are in an instrument computer's data path already and use the parent of the
+        # watch file
         return self.last_run_file.parent.parent == Path("/")
 
     def retry_api_request(
@@ -175,7 +177,7 @@ class LastRunDetector:
         while run:
             if run_once:
                 run = False
-            if not self.instrument_pc:
+            if not self.is_an_instrument_pc:
                 self._check_for_new_cycle_folder()
             callback_func()
             try:
@@ -204,7 +206,7 @@ class LastRunDetector:
         time_between_cycle_folder_checks = current_time - self.last_cycle_folder_check
         # If it's been 6 hours do another check for the latest folder
         if time_between_cycle_folder_checks.total_seconds() > 21600:  # noqa: PLR2004
-            if not self.instrument_pc:
+            if not self.is_an_instrument_pc:
                 self.latest_cycle = self.get_latest_cycle()
             self.last_cycle_folder_check = current_time
 
@@ -215,7 +217,7 @@ class LastRunDetector:
         :param run_number: The run number to generate and check for
         :return: The path to the file for the run number
         """
-        if not self.instrument_pc:
+        if not self.is_an_instrument_pc:
             path = self.instrument_data_path.joinpath(self.latest_cycle).joinpath(
                 self.run_file_prefix + run_number + ".nxs"
             )
