@@ -53,7 +53,7 @@ logging.getLogger("aiohttp.access").addFilter(EndpointFilter())
 
 
 def build_smb_pvc(pvc_name: str, namespace: str, pv_name: str) -> V1PersistentVolumeClaim:
-    pvc = V1PersistentVolumeClaim(
+    return V1PersistentVolumeClaim(
         api_version="v1",
         kind="PersistentVolumeClaim",
         metadata=V1ObjectMeta(
@@ -70,13 +70,11 @@ def build_smb_pvc(pvc_name: str, namespace: str, pv_name: str) -> V1PersistentVo
         ),
     )
 
-    return pvc
-
 
 def build_smb_pv(pv_name: str, namespace: str, host: str, creds_name: str, mount_options: None | list[str] = None) -> V1PersistentVolume:
     if mount_options is None:
         mount_options = []
-    pv = V1PersistentVolume(
+    return V1PersistentVolume(
         api_version="v1",
         kind="PersistentVolume",
         metadata=V1ObjectMeta(
@@ -103,8 +101,6 @@ def build_smb_pv(pv_name: str, namespace: str, host: str, creds_name: str, mount
             ),
         ),
     )
-
-    return pv
 
 
 def setup_imat_pvcs_pvs(namespace: str) -> tuple[V1PersistentVolume, V1PersistentVolumeClaim]:

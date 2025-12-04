@@ -41,7 +41,8 @@ class LastRunDetector:
         self.run_file_prefix = run_file_prefix
         self.callback = callback
         self.last_run_file = last_run_file
-        # If just root /data, assume we are in an instrument computer's data path already and use the parent of the watch file
+        # If just root /data, assume we are in an instrument computer's data path already and use the parent of the
+        # watch file
         self.instrument_pc = self._is_a_instrument_pc()
         self.instrument_data_path = last_run_file.parent.parent.joinpath("data") if not self.instrument_pc else self.last_run_file.parent
         self.last_recorded_run_from_file = self.get_last_run_from_file()
