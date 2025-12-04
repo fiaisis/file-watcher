@@ -85,7 +85,7 @@ class LastRunDetector:
             self.recover_lost_runs(self.latest_known_run_from_fia, self.last_recorded_run_from_file)
             self.latest_known_run_from_fia = self.last_recorded_run_from_file
 
-    def _is_a_instrument_pc(self):
+    def _is_a_instrument_pc(self) -> bool:
         return self.last_run_file.parent.parent == Path("/")
 
     def retry_api_request(
