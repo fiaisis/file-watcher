@@ -27,7 +27,7 @@ def clear_environment():
     del os.environ["QUEUE_USER"]
     del os.environ["QUEUE_PASSWORD"]
     del os.environ["EGRESS_QUEUE_NAME"]
-    del os.environ["WATCH_DIR"]
+    del os.environ["WATCH_FILE"]
     del os.environ["FILE_PREFIX"]
     del os.environ["INSTRUMENT_FOLDER"]
     del os.environ["FIA_API_URL"]
@@ -41,7 +41,7 @@ def test_load_config_defaults(config):
     assert config.username == "guest"
     assert config.password == "guest"  # noqa: S105
     assert config.queue_name == "watched-files"
-    assert config.watch_dir == Path("/archive")
+    assert config.watch_file == Path("/archive/NDXMARI/Instrument/logs/lastrun.txt")
     assert config.run_file_prefix == "MAR"
     assert config.instrument_folder == "NDXMARI"
     assert config.fia_api_url == "localhost:8000"
@@ -53,7 +53,7 @@ def test_load_config_environ_vars(config, clear_environment):
     username = str(mock.MagicMock())
     password = str(mock.MagicMock())
     queue_name = str(mock.MagicMock())
-    watch_dir = "/" + str(mock.MagicMock())
+    watch_file = "/" + str(mock.MagicMock())
     run_file_prefix = str(mock.MagicMock())
     instrument_folder = str(mock.MagicMock())
     fia_api_url = str(mock.MagicMock())
@@ -63,7 +63,7 @@ def test_load_config_environ_vars(config, clear_environment):
     os.environ["QUEUE_USER"] = username
     os.environ["QUEUE_PASSWORD"] = password
     os.environ["EGRESS_QUEUE_NAME"] = queue_name
-    os.environ["WATCH_DIR"] = watch_dir
+    os.environ["WATCH_FILE"] = watch_file
     os.environ["FILE_PREFIX"] = run_file_prefix
     os.environ["INSTRUMENT_FOLDER"] = instrument_folder
     os.environ["FIA_API_URL"] = fia_api_url
@@ -74,7 +74,7 @@ def test_load_config_environ_vars(config, clear_environment):
     assert config.host == host
     assert config.username == username
     assert config.password == password
-    assert config.watch_dir == Path(watch_dir)
+    assert config.watch_file == Path(watch_file)
     assert config.run_file_prefix == run_file_prefix
     assert config.instrument_folder == instrument_folder
     assert config.fia_api_url == fia_api_url

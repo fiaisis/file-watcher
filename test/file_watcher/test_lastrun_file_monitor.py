@@ -23,7 +23,7 @@ class TestLastRunFileMonitor:
         with patch("file_watcher.lastrun_file_monitor.requests.request") as mock_request:
             mock_request.return_value.status_code = 200
             self.lrd = create_last_run_detector(
-                self.archive_path,
+                self.last_run_file,
                 self.instrument,
                 self.callback,
                 self.run_file_prefix,
@@ -43,13 +43,13 @@ class TestLastRunFileMonitor:
         self.path = Path(self.archive_path, self.instrument)
         self.path = self.path / "Instrument" / "logs"
         self.path.mkdir(parents=True, exist_ok=True)
-        self.path = self.path / "lastrun.txt"
-        with Path(self.path).open("w+") as file:
+        self.last_run_file = self.path / "lastrun.txt"
+        with Path(self.last_run_file).open("w+") as file:
             file.write(f"{self.instrument} 0001 0")
 
         # Ensure wish exists
-        wish_path = self.archive_path / "NDXWISH" / "instrument" / "data" / "cycle_23_2"
-        wish_path.mkdir(parents=True, exist_ok=True)
+        mari_path = self.archive_path / "MARI" / "Instrument" / "data" / "cycle_23_2"
+        mari_path.mkdir(parents=True, exist_ok=True)
 
     def mock_response(self):
         """
@@ -207,7 +207,7 @@ class TestLastRunFileMonitor:
     def test_generate_run_path_functions_as_expected(self):
         self.lrd.lastest_cycle = "cycle_23_2"
         self.lrd.run_file_prefix = "TMP"
-        expected_path = self.path.parent.parent / "data" / "cycle_23_2"
+        expected_path = self.path.parent / "data" / "cycle_23_2"
         expected_path.mkdir(parents=True, exist_ok=True)
         expected_path = expected_path / f"{self.lrd.run_file_prefix}0001.nxs"
         with Path(expected_path).open("+w") as file:
@@ -221,7 +221,7 @@ class TestLastRunFileMonitor:
         def raise_exception():
             raise Exception()
 
-        self.lrd.find_file_in_instruments_data_folder = MagicMock(side_effect=raise_exception)
+        self.lrd._find_file_in_instruments_data_folder = MagicMock(side_effect=raise_exception)
 
         with pytest.raises(FileNotFoundError):
             self.lrd.generate_run_path("0001")
@@ -230,11 +230,11 @@ class TestLastRunFileMonitor:
         self,
     ):
         expected_path = MagicMock()
-        self.lrd.find_file_in_instruments_data_folder = MagicMock(return_value=expected_path)
+        self.lrd._find_file_in_instruments_data_folder = MagicMock(return_value=expected_path)
 
         returned_path = self.lrd.generate_run_path("0001")
 
-        self.lrd.find_file_in_instruments_data_folder.assert_called_once_with("0001")
+        self.lrd._find_file_in_instruments_data_folder.assert_called_once_with("0001")
         assert expected_path == returned_path
 
     def test_new_run_detected_handles_just_run_number(self):
@@ -311,26 +311,10 @@ class TestLastRunFileMonitor:
             body={"latest_run": run_number},
         )
 
-    def test_find_file_in_instruments_data_folder_finds_file_in_instrument_data_folder(
-        self,
-    ):
-        run_number = "0001"
-        self.lrd.archive_path = MagicMock()
-        instrument_dir = self.lrd.archive_path.joinpath.return_value.joinpath.return_value
-        instrument_dir.rglob = MagicMock(return_value=iter(["banana"]))
-        return_value = self.lrd.find_file_in_instruments_data_folder(run_number)
-
-        self.lrd.archive_path.joinpath.assert_called_once_with(self.lrd.instrument)
-        self.lrd.archive_path.joinpath.return_value.joinpath.assert_called_once_with("Instrument/data")
-        instrument_dir.rglob.assert_called_once_with(f"cycle_??_?/*{run_number}.nxs")
-
-        assert return_value == "banana"
-
     def test_get_latest_cycle_handles_lack_of_cycles_in_archive(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
             path = Path(tmpdirname)
-            self.lrd.archive_path = path
-            path = path / "NDXWISH" / "instrument" / "data"
+            self.lrd.instrument_data_path = path
             path.mkdir(parents=True, exist_ok=True)
 
             pytest.raises(FileNotFoundError, self.lrd.get_latest_cycle)
@@ -338,10 +322,17 @@ class TestLastRunFileMonitor:
     def test_get_latest_cycle_finds_latest_cycle(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
             path = Path(tmpdirname)
-            self.lrd.archive_path = path
-            path = path / "NDXWISH" / "instrument" / "data" / "cycle_25_2"
+            self.lrd.instrument_data_path = path
+            path = path / "cycle_25_2"
             path.mkdir(parents=True, exist_ok=True)
 
             latest_cycle = self.lrd.get_latest_cycle()
 
             assert latest_cycle == "cycle_25_2"
+
+    def test_instrument_pc_check(self):
+        assert not self.lrd.is_an_instrument_pc
+
+        self.lrd.last_run_file = Path("/imat/lastrun.txt")
+
+        assert self.lrd.is_an_instrument_pc
