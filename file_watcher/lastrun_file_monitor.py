@@ -7,10 +7,11 @@ import datetime
 import os
 import re
 import time
+from collections.abc import Callable
 from http import HTTPStatus
 from pathlib import Path
 from time import sleep
-from typing import Any, Callable, Literal, Union, cast
+from typing import Any, Literal, cast
 
 import requests
 from requests import HTTPError
@@ -232,7 +233,7 @@ class LastRunDetector:
         logger.info("Path does exist: %s", path)
         return path
 
-    def new_run_detected(self, run_number: str, run_path: Union[Path, None] = None) -> None:
+    def new_run_detected(self, run_number: str, run_path: Path | None = None) -> None:
         """
         Called when a new run is detected, you can use the run number OR the run path
         :param run_number: The run number that was detected or
