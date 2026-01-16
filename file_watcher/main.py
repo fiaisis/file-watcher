@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import requests
 from pika import BlockingConnection, ConnectionParameters, PlainCredentials  # type: ignore
@@ -120,7 +120,7 @@ class FileWatcher:
         :return: None
         """
 
-        def _event_occurred(path_to_add: Union[Path, None]) -> None:
+        def _event_occurred(path_to_add: Path | None) -> None:
             if path_to_add is not None:
                 self.on_event(path_to_add)
 
