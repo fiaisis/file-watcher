@@ -16,12 +16,12 @@ file_watcher = "file_watcher.main:main"
 [project.optional-dependencies]
 operator = [
     "kopf==1.40.0",
-    "kubernetes==34.1.0",
+    "kubernetes==35.0.0",
     "PyYAML==6.0.3"
 ]
 
 formatting = [
-    "ruff==0.14.11"
+    "ruff==0.14.13"
 ]
 
 test = [
