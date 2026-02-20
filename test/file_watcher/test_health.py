@@ -57,7 +57,7 @@ def test_stop_prevents_further_writes(mock_get: Mock, heartbeat: Heartbeat, monk
     monkeypatch.setattr(time, "strftime", lambda fmt: "BEFORE")
     heartbeat.start()
 
-    assert wait_until(lambda: heartbeat.path.exists())
+    assert wait_until(heartbeat.path.exists)
     assert heartbeat.path.read_text(encoding="utf-8") == "BEFORE"
 
     heartbeat.stop()
