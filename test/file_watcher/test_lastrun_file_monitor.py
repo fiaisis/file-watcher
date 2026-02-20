@@ -269,7 +269,8 @@ class TestLastRunFileMonitor:
 
         self.lrd.last_run_file = path
 
-        pytest.raises(RuntimeError, self.lrd.get_last_run_from_file)
+        with pytest.raises(RuntimeError):
+            self.lrd.get_last_run_from_file()
 
     def test_recover_lost_runs_finds_runs_that_were_lost(self):
         self.lrd.update_latest_run_to_fia_api = MagicMock(return_value="Latest run update: run number 0001")
@@ -317,7 +318,8 @@ class TestLastRunFileMonitor:
             self.lrd.instrument_data_path = path
             path.mkdir(parents=True, exist_ok=True)
 
-            pytest.raises(FileNotFoundError, self.lrd.get_latest_cycle)
+            with pytest.raises(FileNotFoundError):
+                self.lrd.get_latest_cycle()
 
     def test_get_latest_cycle_finds_latest_cycle(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
