@@ -23,7 +23,7 @@ jobs:
           token: ${{ secrets.WRITE_PACKAGE_TOKEN }}
 
       - name: Log in to the Container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -37,7 +37,7 @@ jobs:
 
       - name: Build and push file watcher Docker image
         id: file_watcher_build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           file: ./container/file_watcher.D
           push: true
@@ -57,7 +57,7 @@ jobs:
 
       - name: Build and push file watcher operator Docker image
         id: file_watcher_operator_build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           file: ./container/file_watcher_operator.D
           push: true
