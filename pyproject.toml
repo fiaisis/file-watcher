@@ -15,18 +15,18 @@ file_watcher = "file_watcher.main:main"
 
 [project.optional-dependencies]
 operator = [
-    "kopf==1.44.0",
+    "kopf==1.44.3",
     "kubernetes==35.0.0",
     "PyYAML==6.0.3"
 ]
 
 formatting = [
-    "ruff==0.15.6"
+    "ruff==0.15.7"
 ]
 
 test = [
     "pytest==9.0.2",
-    "pytest-cov==7.0.0",
+    "pytest-cov==7.1.0",
     "pytest-asyncio==1.3.0"
 ]
 
