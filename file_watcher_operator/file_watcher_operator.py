@@ -105,7 +105,8 @@ def setup_imat_pvcs_pvs(namespace: str) -> tuple[V1PersistentVolume, V1Persisten
     imat_pv_name = "filewatcher-ndximat-data-pv"
     imat_pvc_name = "filewatcher-ndximat-data-pvc"
 
-    imat_pv = build_smb_pv(imat_pv_name, namespace, "//NDXIMAT.isis.cclrc.ac.uk/data$/", "imat-creds")
+    imat_pv = build_smb_pv(imat_pv_name, namespace, "//smb-bridge-imat.fia.svc.cluster.local/imat", "smb-bridge-imat",
+                           mount_options=["vers=3.0", "nodfs", "ro"])
     imat_pvc = build_smb_pvc(imat_pvc_name, namespace, imat_pv_name)
 
     return imat_pv, imat_pvc
@@ -144,7 +145,6 @@ def build_deployment(
     Create and return a Kubernetes deployment yaml for each deployment
     :param spec: The kopf spec
     :param name: The instrument name
-    :param children: The list of children for this filewatcher
     :return: Tuple of the mutable mappings containing the deployment specs
     """
     queue_host = os.environ.get("QUEUE_HOST", "rabbitmq-cluster.rabbitmq.svc.cluster.local")
