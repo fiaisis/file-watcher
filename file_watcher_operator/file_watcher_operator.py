@@ -105,8 +105,13 @@ def setup_imat_pvcs_pvs(namespace: str) -> tuple[V1PersistentVolume, V1Persisten
     imat_pv_name = "filewatcher-ndximat-data-pv"
     imat_pvc_name = "filewatcher-ndximat-data-pvc"
 
-    imat_pv = build_smb_pv(imat_pv_name, namespace, "//smb-bridge-imat.fia.svc.cluster.local/imat", "smb-bridge-imat",
-                           mount_options=["vers=3.0", "nodfs", "ro"])
+    imat_pv = build_smb_pv(
+        imat_pv_name,
+        namespace,
+        "//smb-bridge-imat.fia.svc.cluster.local/imat",
+        "smb-bridge-imat",
+        mount_options=["vers=3.0", "nodfs", "ro"],
+    )
     imat_pvc = build_smb_pvc(imat_pvc_name, namespace, imat_pv_name)
 
     return imat_pv, imat_pvc
