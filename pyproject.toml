@@ -42,6 +42,14 @@ dev = [
     "file_watcher[code-inspection]"
 ]
 
+all = [
+    "file-watcher[operator]",
+    "file-watcher[formatting]",
+    "file-watcher[test]",
+    "file-watcher[code-inspection]",
+    "file-watcher[dev]",
+]
+
 [tool.setuptools]
 packages = ["file_watcher"]
 
