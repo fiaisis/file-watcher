@@ -21,21 +21,21 @@ operator = [
 ]
 
 formatting = [
-    "ruff==0.15.17"
+    "ruff==0.15.21"
 ]
 
 test = [
-    "pytest==9.1.0",
+    "pytest==9.1.1",
     "pytest-cov==7.1.0",
     "pytest-asyncio==1.4.0"
 ]
 
 code-inspection = [
-    "mypy==2.1.0",
+    "mypy==2.3.0",
     "types-PyYAML==6.0.12.20260518",
     "file_watcher[test]",
     "file_watcher[operator]",
-    "types-requests==2.33.0.20260518"
+    "types-requests==2.33.0.20260712"
 ]
 
 dev = [
