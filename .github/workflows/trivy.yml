@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Build Docker image
         uses: docker/build-push-action@v7
@@ -35,7 +35,7 @@ jobs:
         if: failure()
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.37.4
         if: failure()
         with:
           sarif_file: trivy-results-file-watcher.sarif
@@ -45,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7.0.0
+        uses: actions/checkout@v7.0.1
 
       - name: Build Docker image
         uses: docker/build-push-action@v7
@@ -67,7 +67,7 @@ jobs:
         if: failure()
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@v4.37.4
         if: failure()
         with:
           sarif_file: trivy-results-file-watcher-operator.sarif
