@@ -68,7 +68,7 @@ def build_smb_pvc(pvc_name: str, namespace: str, pv_name: str) -> V1PersistentVo
 
 
 def build_smb_pv(
-    pv_name: str, namespace: str, host: str, creds_name: str, mount_options: None | list[str] = None
+    pv_name: str, namespace: str, host: str, creds_name: str, mount_options: list[str] | None = None
 ) -> V1PersistentVolume:
     if mount_options is None:
         mount_options = []
