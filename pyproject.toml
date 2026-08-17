@@ -3,7 +3,7 @@ name = "file-watcher"
 readme = "README.md"
 version = "0.0.1"
 dependencies = [
-    "pika==1.4.2",
+    "pika==1.4.4",
     "requests==2.34.2",
 ]
 
@@ -21,7 +21,7 @@ operator = [
 ]
 
 formatting = [
-    "ruff==0.16.0"
+    "ruff==0.16.3"
 ]
 
 test = [
