@@ -21,7 +21,7 @@ operator = [
 ]
 
 formatting = [
-    "ruff==0.16.4"
+    "ruff==0.16.7"
 ]
 
 test = [
@@ -32,10 +32,10 @@ test = [
 
 code-inspection = [
     "mypy==2.3.1",
-    "types-PyYAML==6.0.12.20260815",
+    "types-PyYAML==6.0.12.20260906",
     "file_watcher[test]",
     "file_watcher[operator]",
-    "types-requests==2.33.0.20260712"
+    "types-requests==2.33.0.20260906"
 ]
 
 dev = [
