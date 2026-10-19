@@ -15,13 +15,13 @@ file_watcher = "file_watcher.main:main"
 
 [project.optional-dependencies]
 operator = [
-    "kopf==1.44.6",
-    "kubernetes==36.0.3",
+    "kopf==1.45.1",
+    "kubernetes==37.0.1",
     "PyYAML==6.0.3"
 ]
 
 formatting = [
-    "ruff==0.16.7"
+    "ruff==0.17.1"
 ]
 
 test = [
@@ -31,11 +31,11 @@ test = [
 ]
 
 code-inspection = [
-    "mypy==2.3.1",
+    "mypy==2.4.0",
     "types-PyYAML==6.0.12.20260906",
     "file_watcher[test]",
     "file_watcher[operator]",
-    "types-requests==2.33.0.20260906"
+    "types-requests==2.33.0.20261006"
 ]
 
 dev = [
