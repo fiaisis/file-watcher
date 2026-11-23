@@ -3,7 +3,7 @@ name = "file-watcher"
 readme = "README.md"
 version = "0.0.1"
 dependencies = [
-    "pika==1.4.4",
+    "pika==1.5.0",
     "requests==2.34.2",
 ]
 
@@ -16,23 +16,23 @@ file_watcher = "file_watcher.main:main"
 [project.optional-dependencies]
 operator = [
     "kopf==1.45.2",
-    "kubernetes==37.0.2",
+    "kubernetes==37.0.3",
     "PyYAML==6.0.3"
 ]
 
 formatting = [
-    "ruff==0.17.4"
+    "ruff==0.17.6"
 ]
 
 test = [
     "pytest==9.2.0",
     "pytest-cov==7.1.0",
-    "pytest-asyncio==1.4.1.post1"
+    "pytest-asyncio==1.5.0"
 ]
 
 code-inspection = [
     "mypy==2.4.1",
-    "types-PyYAML==6.0.12.20261103",
+    "types-PyYAML==6.0.12.20261113",
     "file_watcher[test]",
     "file_watcher[operator]",
     "types-requests==2.33.0.20261030"
